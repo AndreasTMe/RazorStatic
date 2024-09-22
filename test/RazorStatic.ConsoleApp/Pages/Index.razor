@@ -1,0 +1,18 @@
+﻿@using RazorStatic.ConsoleApp.Services
+@inject ITestService TestService
+
+@{
+    var message = TestService.Message;
+}
+
+<h1 class="text-6xl text-amber-400">Home Page</h1>
+
+<p>@message</p>
+
+<button onclick="showAlert('everybody')">Click Me</button>
+
+<script>
+    function showAlert(value) {
+        alert(`Hello ${value}!`);
+    }
+</script>

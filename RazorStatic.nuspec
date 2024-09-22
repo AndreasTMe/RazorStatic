@@ -1,0 +1,29 @@
+﻿<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <id>RazorStatic</id>
+        <version>0.1.0</version>
+        <title>RazorStatic</title>
+        <description>A way to create static sites using Razor components.</description>
+        <authors>Andreas T.</authors>
+        <owners>Andreas T.</owners>
+        <license type="expression">MIT</license>
+        <releaseNotes>Initial release</releaseNotes>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <dependencies>
+            <group targetFramework="net8.0">
+                <!-- List dependencies here, if any -->
+            </group>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="src\RazorStatic\bin\Release\net8.0\RazorStatic.dll" target="lib\net8.0" />
+        <file src="src\RazorStatic\bin\Release\net8.0\RazorStatic.xml" target="lib\net8.0" />
+        <file src="src\RazorStatic.Shared\bin\Release\net8.0\RazorStatic.Shared.dll" target="lib\net8.0" />
+        <file src="src\RazorStatic.Shared\bin\Release\net8.0\RazorStatic.Shared.xml" target="lib\net8.0" />
+        
+        <file src="src\RazorStatic.SourceGen\bin\Release\net8.0\RazorStatic.SourceGen.dll" target="analyzers\dotnet\cs" />
+        <file src="src\RazorStatic.Analyzers\bin\Release\net8.0\RazorStatic.Analyzers.dll" target="analyzers\dotnet\cs" />
+        <file src="src\RazorStatic.Shared\bin\Release\net8.0\RazorStatic.Shared.dll" target="analyzers\dotnet\cs" />
+    </files>
+</package>

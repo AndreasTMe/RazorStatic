@@ -1,0 +1,13 @@
+﻿/.idea
+
+bin
+obj
+
+appsettings.json
+appsettings.*.json
+*.DotSettings.user
+
+node_modules
+package-lock.json
+
+*.nupkg
