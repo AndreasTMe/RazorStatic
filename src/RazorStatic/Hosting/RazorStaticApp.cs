@@ -17,33 +17,13 @@ namespace RazorStatic.Hosting;
 /// </summary>
 public static class RazorStaticApp
 {
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <returns></returns>
     public static IRazorStaticAppHostBuilder CreateBuilder() => CreateBuilder(null, null);
 
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="args"></param>
-    /// <returns></returns>
     public static IRazorStaticAppHostBuilder CreateBuilder(string[]? args) => CreateBuilder(args, null);
 
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="configure"></param>
-    /// <returns></returns>
     public static IRazorStaticAppHostBuilder CreateBuilder(Action<RazorStaticConfigurationOptions>? configure) =>
         CreateBuilder(null, configure);
 
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="args"></param>
-    /// <param name="configure"></param>
-    /// <returns></returns>
     public static IRazorStaticAppHostBuilder CreateBuilder(string[]? args,
                                                            Action<RazorStaticConfigurationOptions>? configure)
     {

@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RazorStatic.Shared;
 using RazorStatic.Shared.Attributes;
+using RazorStatic.Shared.Components;
 using RazorStatic.SourceGen.Extensions;
 using RazorStatic.SourceGen.Utilities;
 using System;
@@ -70,9 +71,12 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
 
         try
         {
-            var mappings = Directory.GetFiles(capture.Properties.PagesDir, "*.razor", SearchOption.AllDirectories)
-                                    .Select(page => GetDirectoryToPageTypePair(page, capture));
+            var pages = Directory.GetFiles(capture.Properties.PagesDir, "*.razor", SearchOption.AllDirectories)
+                                 .ToArray();
 
+            var typeMappings = pages.Select(pagePath => GetDirectoryToPageTypePair(pagePath, capture));
+
+            // TODO: Update endpoint in generated file
             var classInfo = capture.ClassInfos[0];
             context.AddSource(
                 $"RazorStatic_{classInfo.ClassName}.g.cs",
@@ -80,6 +84,7 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
                   using Microsoft.AspNetCore.Components;
                   using Microsoft.AspNetCore.Components.Web;
                   using RazorStatic.Shared;
+                  using RazorStatic.Shared.Components;
                   using System;
                   using System.Collections.Frozen;
                   using System.Collections.Generic;
@@ -90,9 +95,9 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
                       {{string.Join(" ", classInfo.Modifiers)}} class {{classInfo.ClassName}} : {{nameof(IPagesStore)}}
                       {
                   #nullable enable
-                          private static readonly FrozenDictionary<string, Type> Items = new Dictionary<string, Type>()
+                          private static readonly FrozenDictionary<string, Type> Types = new Dictionary<string, Type>()
                           {
-                              {{string.Join(",\n            ", mappings)}}
+                              {{string.Join(",\n            ", typeMappings)}}
                           }
                           .ToFrozenDictionary();
                           
@@ -102,18 +107,25 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
                           
                           public {{classInfo.ClassName}}(HtmlRenderer renderer) => _renderer = renderer;
                           
-                          public Type GetPageType(string filePath) => Items[filePath];
+                          public Type GetPageType(string filePath) => Types[filePath];
                   
                           public Task<string> {{nameof(IPagesStore.RenderComponentAsync)}}(string filePath) => _renderer.Dispatcher.InvokeAsync(async () =>
                               {
-                                  var output = await _renderer.RenderComponentAsync(Items[filePath]).ConfigureAwait(false);
+                                  var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
+                                  {
+                                      [nameof({{nameof(FileComponentBase)}}.{{nameof(FileComponentBase.Endpoint)}})] = "",
+                                  });
+                                  var output = await _renderer.RenderComponentAsync(Types[filePath]).ConfigureAwait(false);
                                   return output.ToHtmlString();
                               });
                           
                           public Task<string> {{nameof(IPagesStore.RenderLayoutComponentAsync)}}(string filePath, string htmlBody) => _renderer.Dispatcher.InvokeAsync(async () =>
                               {
-                                  var parameters = ParameterView.FromDictionary(new Dictionary<string, object?> { [nameof(LayoutComponentBase.Body)] = GetRenderFragment(htmlBody) });
-                                  var output = await _renderer.RenderComponentAsync(Items[filePath], parameters).ConfigureAwait(false);
+                                  var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
+                                  {
+                                      [nameof(LayoutComponentBase.Body)] = GetRenderFragment(htmlBody)
+                                  });
+                                  var output = await _renderer.RenderComponentAsync(Types[filePath], parameters).ConfigureAwait(false);
                                   return output.ToHtmlString();
                               });
                           
@@ -129,6 +141,6 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
         }
     }
 
-    private static string GetDirectoryToPageTypePair(string file, Capture capture) =>
-        $"[@\"{file}\"] = {DirectoryUtils.GetPageType(file, capture.Properties.ProjectDir!, capture.AssemblyName!)}";
+    private static string GetDirectoryToPageTypePair(string filePath, Capture capture) =>
+        $"[@\"{filePath}\"] = {DirectoryUtils.GetPageType(filePath, capture.Properties.ProjectDir!, capture.AssemblyName!)}";
 }

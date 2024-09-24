@@ -19,27 +19,18 @@ public sealed class RazorStaticConfigurationOptions
 
     private bool _isLocked;
 
-    /// <summary>
-    /// 
-    /// </summary>
     public int Port
     {
         get => _port;
         set => SetValueIfUnlocked(ref _port, value);
     }
 
-    /// <summary>
-    /// 
-    /// </summary>
     public string OutputPath
     {
         get => _outputPath;
         set => SetValueIfUnlocked(ref _outputPath, value);
     }
 
-    /// <summary>
-    /// 
-    /// </summary>
     public bool IsAbsoluteOutputPath
     {
         get => _isAbsoluteOutputPath;

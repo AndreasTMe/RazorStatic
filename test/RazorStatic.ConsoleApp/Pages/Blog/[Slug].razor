@@ -1,13 +1,10 @@
 ﻿@using RazorStatic.Shared.Components
-@using System.IO
 @using System.Text.RegularExpressions
 
-@inherits FileComponentBase
+@inherits CollectionFileComponentBase
 
 @{
-    var title = FilePath?[FilePath.LastIndexOf(Path.DirectorySeparatorChar)..FilePath.LastIndexOf('.')];
-    title = new Regex("[^a-zA-Z0-9]").Replace(title ?? string.Empty, " ").Trim();
-
+    var title    = new Regex("[^a-zA-Z0-9]").Replace(ContentFileName ?? string.Empty, " ").Trim();
     var fragment = CreateRenderFragment($"<h1 style='color:red'>{title}</h1>");
 }
 

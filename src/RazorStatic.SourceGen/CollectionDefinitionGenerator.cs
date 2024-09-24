@@ -107,7 +107,8 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
                     continue;
 
                 var collectionDir = capture.Properties.ContentDir + classInfo.Properties[ContentDirectory];
-                var markdownFiles = Directory.GetFiles(collectionDir, "*.md", SearchOption.AllDirectories);
+                var markdownFiles = Directory.GetFiles(collectionDir, "*.md", SearchOption.AllDirectories)
+                                             .Select(file => GetContentFileToEndpointPair(file, classInfo));
 
                 context.AddSource(
                     $"RazorStatic_{classInfo.ClassName}.g.cs",
@@ -126,11 +127,11 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
                           {{string.Join(" ", classInfo.Modifiers)}} class {{classInfo.ClassName}} : {{nameof(ICollectionPagesStore)}}
                           {
                       #nullable enable
-                              private static readonly FrozenSet<string> Items = new HashSet<string>()
+                              private static readonly FrozenDictionary<string, string> ContentFilePaths = new Dictionary<string, string>()
                               {
-                                  {{string.Join(",\n            ", markdownFiles.Select(file => $"@\"{file}\""))}}
+                                  {{string.Join(",\n            ", markdownFiles)}}
                               }
-                              .ToFrozenSet();
+                              .ToFrozenDictionary();
                               
                               private readonly HtmlRenderer _renderer;
                               
@@ -140,15 +141,19 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
                       
                               public async IAsyncEnumerable<RenderedResult> {{nameof(ICollectionPagesStore.RenderComponentsAsync)}}(Type pageType)
                               {
-                                  foreach (var item in Items)
+                                  foreach (var (contentFilePath, endpoint) in ContentFilePaths)
                                   {
                                       var content = await _renderer.Dispatcher.InvokeAsync(async () =>
                                       {
-                                          var parameters = ParameterView.FromDictionary(new Dictionary<string, object?> { [nameof({{nameof(FileComponentBase)}}.{{nameof(FileComponentBase.FilePath)}})] = item });
+                                          var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
+                                          {
+                                              [nameof({{nameof(CollectionFileComponentBase)}}.{{nameof(CollectionFileComponentBase.Endpoint)}})] = endpoint,
+                                              [nameof({{nameof(CollectionFileComponentBase)}}.{{nameof(CollectionFileComponentBase.ContentFilePath)}})] = contentFilePath
+                                          });
                                           var output = await _renderer.RenderComponentAsync(pageType, parameters).ConfigureAwait(false);
                                           return output.ToHtmlString();
                                       });
-                                      yield return new RenderedResult(item, content);
+                                      yield return new RenderedResult(contentFilePath, content);
                                   }
                               }
                       #nullable disable
@@ -199,5 +204,23 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
                   }
               }
               """);
+    }
+
+    private static string GetContentFileToEndpointPair(string file, AttributeClassInfo classInfo) =>
+        $"[@\"{file}\"] = @\"{GetEndpoint(classInfo.Properties[PageRoute], file)}\"";
+
+    private static string GetEndpoint(string parentRoute, string filePath)
+    {
+        if (!parentRoute.StartsWith(Path.DirectorySeparatorChar))
+            parentRoute = Path.DirectorySeparatorChar + parentRoute;
+
+        var fileName = filePath[filePath.LastIndexOf(Path.DirectorySeparatorChar)..filePath.LastIndexOf('.')];
+
+        if (!parentRoute.EndsWith(Path.DirectorySeparatorChar) && !fileName.StartsWith(Path.DirectorySeparatorChar))
+            parentRoute += Path.DirectorySeparatorChar;
+        else if (parentRoute.EndsWith(Path.DirectorySeparatorChar) && fileName.StartsWith(Path.DirectorySeparatorChar))
+            parentRoute = parentRoute[..^1];
+
+        return (parentRoute + fileName).ToLowerInvariant();
     }
 }

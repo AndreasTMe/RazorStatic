@@ -8,13 +8,7 @@ namespace RazorStatic.Shared.Attributes;
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class CollectionDefinitionAttribute : Attribute
 {
-    /// <summary>
-    /// 
-    /// </summary>
     public required string PageRoute { get; set; }
 
-    /// <summary>
-    /// 
-    /// </summary>
     public required string ContentDirectory { get; set; }
 }

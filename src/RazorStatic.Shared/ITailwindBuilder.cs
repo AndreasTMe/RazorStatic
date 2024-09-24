@@ -7,8 +7,5 @@ namespace RazorStatic.Shared;
 /// </summary>
 public interface ITailwindBuilder
 {
-    /// <summary>
-    /// 
-    /// </summary>
     Task BuildAsync();
 }

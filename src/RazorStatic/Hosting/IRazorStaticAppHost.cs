@@ -7,9 +7,5 @@ namespace RazorStatic.Hosting;
 /// </summary>
 public interface IRazorStaticAppHost
 {
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <returns></returns>
     Task RunAsync();
 }

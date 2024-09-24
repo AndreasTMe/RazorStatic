@@ -7,16 +7,6 @@ namespace RazorStatic.Shared.Components;
 /// </summary>
 public abstract class FileComponentBase : ComponentBase
 {
-    /// <summary>
-    /// 
-    /// </summary>
     [Parameter]
-    public string? FilePath { get; set; }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="html"></param>
-    /// <returns></returns>
-    protected static RenderFragment CreateRenderFragment(string html) => b => b.AddMarkupContent(0, html);
+    public string? Endpoint { get; set; }
 }

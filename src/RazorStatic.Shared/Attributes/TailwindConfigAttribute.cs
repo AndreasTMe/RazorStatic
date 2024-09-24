@@ -8,13 +8,7 @@ namespace RazorStatic.Shared.Attributes;
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class TailwindConfigAttribute : Attribute
 {
-    /// <summary>
-    /// 
-    /// </summary>
     public required string StylesFilePath { get; set; }
-
-    /// <summary>
-    /// 
-    /// </summary>
+    
     public required string OutputFilePath { get; set; }
 }
