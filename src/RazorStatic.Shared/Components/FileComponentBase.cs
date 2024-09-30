@@ -5,8 +5,4 @@ namespace RazorStatic.Shared.Components;
 /// <summary>
 /// TODO: Documentation
 /// </summary>
-public abstract class FileComponentBase : ComponentBase
-{
-    [Parameter]
-    public string? Endpoint { get; set; }
-}
+public abstract class FileComponentBase : ComponentBase;

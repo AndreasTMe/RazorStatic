@@ -2,7 +2,6 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RazorStatic.Shared;
 using RazorStatic.Shared.Attributes;
-using RazorStatic.Shared.Components;
 using RazorStatic.SourceGen.Extensions;
 using RazorStatic.SourceGen.Utilities;
 using System;
@@ -76,7 +75,6 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
 
             var typeMappings = pages.Select(pagePath => GetDirectoryToPageTypePair(pagePath, capture));
 
-            // TODO: Update endpoint in generated file
             var classInfo = capture.ClassInfos[0];
             context.AddSource(
                 $"RazorStatic_{classInfo.ClassName}.g.cs",
@@ -111,10 +109,6 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
                   
                           public Task<string> {{nameof(IPagesStore.RenderComponentAsync)}}(string filePath) => _renderer.Dispatcher.InvokeAsync(async () =>
                               {
-                                  var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
-                                  {
-                                      [nameof({{nameof(FileComponentBase)}}.{{nameof(FileComponentBase.Endpoint)}})] = "",
-                                  });
                                   var output = await _renderer.RenderComponentAsync(Types[filePath]).ConfigureAwait(false);
                                   return output.ToHtmlString();
                               });
