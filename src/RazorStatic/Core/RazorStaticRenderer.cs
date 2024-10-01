@@ -19,7 +19,7 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
 {
     private readonly HtmlRenderer                 _htmlRenderer;
     private readonly IPagesStore                  _pagesStore;
-    private readonly ICollectionPagesStoreFactory _pagesStoreFactory;
+    private readonly IPageCollectionsStore        _pageCollectionsStore;
     private readonly IFileWriter                  _fileWriter;
     private readonly ILogger<RazorStaticRenderer> _logger;
 
@@ -27,16 +27,16 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
 
     public RazorStaticRenderer(HtmlRenderer htmlRenderer,
                                IPagesStore pagesStore,
-                               ICollectionPagesStoreFactory pagesStoreFactory,
+                               IPageCollectionsStore pageCollectionsStore,
                                IFileWriter fileWriter,
                                IOptions<RazorStaticConfigurationOptions> options,
                                ILogger<RazorStaticRenderer> logger)
     {
-        _htmlRenderer      = htmlRenderer;
-        _pagesStore        = pagesStore;
-        _pagesStoreFactory = pagesStoreFactory;
-        _fileWriter        = fileWriter;
-        _logger            = logger;
+        _htmlRenderer         = htmlRenderer;
+        _pagesStore           = pagesStore;
+        _pageCollectionsStore = pageCollectionsStore;
+        _fileWriter           = fileWriter;
+        _logger               = logger;
 
         _rootPath = options.Value.IsAbsoluteOutputPath
             ? options.Value.OutputPath
@@ -128,9 +128,9 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         if (leaf.IsDynamicPath)
         {
             var pageType = _pagesStore.GetPageType(leaf.FullPath);
-            if (_pagesStoreFactory.TryGetCollection(leaf.FullPath, out var collection))
+            if (_pageCollectionsStore.TryGetCollection(leaf.FullPath, out var collection))
             {
-                await foreach (var renderedResult in collection.RenderComponentsAsync(pageType))
+                await foreach (var renderedResult in collection.RenderComponentsAsync(leaf.FullPath, pageType))
                 {
                     var pageHtml = renderedResult.Content;
                     for (var i = layouts.Count - 1; i >= 0; i--)

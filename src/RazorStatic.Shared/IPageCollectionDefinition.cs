@@ -6,9 +6,9 @@ namespace RazorStatic.Shared;
 /// <summary>
 /// TODO: Documentation
 /// </summary>
-public interface ICollectionPagesStore
+public interface IPageCollectionDefinition
 {
     string RootPath { get; }
 
-    IAsyncEnumerable<RenderedResult> RenderComponentsAsync(Type pageType);
+    IAsyncEnumerable<RenderedResult> RenderComponentsAsync(string filePath, Type pageType);
 }

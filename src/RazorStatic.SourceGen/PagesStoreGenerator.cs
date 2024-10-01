@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RazorStatic.Shared;
 using RazorStatic.Shared.Attributes;
+using RazorStatic.Shared.Components;
 using RazorStatic.SourceGen.Extensions;
 using RazorStatic.SourceGen.Utilities;
 using System;
@@ -108,20 +109,24 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
                           public Type GetPageType(string filePath) => Types[filePath];
                   
                           public Task<string> {{nameof(IPagesStore.RenderComponentAsync)}}(string filePath) => _renderer.Dispatcher.InvokeAsync(async () =>
+                          {
+                              var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
                               {
-                                  var output = await _renderer.RenderComponentAsync(Types[filePath]).ConfigureAwait(false);
-                                  return output.ToHtmlString();
+                                  [nameof({{nameof(FileComponentBase)}}.{{nameof(FileComponentBase.PageFilePath)}})] = filePath
                               });
+                              var output = await _renderer.RenderComponentAsync(Types[filePath], parameters).ConfigureAwait(false);
+                              return output.ToHtmlString();
+                          });
                           
                           public Task<string> {{nameof(IPagesStore.RenderLayoutComponentAsync)}}(string filePath, string htmlBody) => _renderer.Dispatcher.InvokeAsync(async () =>
+                          {
+                              var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
                               {
-                                  var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
-                                  {
-                                      [nameof(LayoutComponentBase.Body)] = GetRenderFragment(htmlBody)
-                                  });
-                                  var output = await _renderer.RenderComponentAsync(Types[filePath], parameters).ConfigureAwait(false);
-                                  return output.ToHtmlString();
+                                  [nameof(LayoutComponentBase.Body)] = GetRenderFragment(htmlBody)
                               });
+                              var output = await _renderer.RenderComponentAsync(Types[filePath], parameters).ConfigureAwait(false);
+                              return output.ToHtmlString();
+                          });
                           
                           private static RenderFragment GetRenderFragment(string html) => b => b.AddMarkupContent(0, html);
                   #nullable disable

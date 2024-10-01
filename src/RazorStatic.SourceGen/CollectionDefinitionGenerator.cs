@@ -124,7 +124,7 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
 
                       namespace {{classInfo.Namespace}}
                       {
-                          {{string.Join(" ", classInfo.Modifiers)}} class {{classInfo.ClassName}} : {{nameof(ICollectionPagesStore)}}
+                          {{string.Join(" ", classInfo.Modifiers)}} class {{classInfo.ClassName}} : {{nameof(IPageCollectionDefinition)}}
                           {
                       #nullable enable
                               private static readonly FrozenSet<string> ContentFilePaths = new HashSet<string>()
@@ -135,11 +135,11 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
                               
                               private readonly HtmlRenderer _renderer;
                               
-                              public string {{nameof(ICollectionPagesStore.RootPath)}} => @"{{capture.Properties.ContentDir}}";
+                              public string {{nameof(IPageCollectionDefinition.RootPath)}} => @"{{capture.Properties.ContentDir}}";
                               
                               public {{classInfo.ClassName}}(HtmlRenderer renderer) => _renderer = renderer;
                       
-                              public async IAsyncEnumerable<RenderedResult> {{nameof(ICollectionPagesStore.RenderComponentsAsync)}}(Type pageType)
+                              public async IAsyncEnumerable<RenderedResult> {{nameof(IPageCollectionDefinition.RenderComponentsAsync)}}(string filePath, Type pageType)
                               {
                                   foreach (var contentFilePath in ContentFilePaths)
                                   {
@@ -147,6 +147,7 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
                                       {
                                           var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
                                           {
+                                              [nameof({{nameof(FileComponentBase)}}.{{nameof(FileComponentBase.PageFilePath)}})] = filePath,
                                               [nameof({{nameof(CollectionFileComponentBase)}}.{{nameof(CollectionFileComponentBase.ContentFilePath)}})] = contentFilePath
                                           });
                                           var output = await _renderer.RenderComponentAsync(pageType, parameters).ConfigureAwait(false);
@@ -169,7 +170,7 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
         }
 
         context.AddSource(
-            "RazorStatic_CollectionPagesStoreFactory.g.cs",
+            "RazorStatic_PageCollectionsStore.g.cs",
             $$"""
               using Microsoft.AspNetCore.Components.Web;
               using RazorStatic.Shared;
@@ -179,23 +180,23 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
 
               namespace {{capture.AssemblyName}}
               {
-                  internal sealed class RazorStatic_CollectionPagesStoreFactory : {{nameof(ICollectionPagesStoreFactory)}}
+                  internal sealed class RazorStatic_PageCollectionsStore : {{nameof(IPageCollectionsStore)}}
                   {
               #nullable enable
                       private readonly HtmlRenderer _renderer;
-                      private readonly FrozenDictionary<string, {{nameof(ICollectionPagesStore)}}> _collections;
+                      private readonly FrozenDictionary<string, {{nameof(IPageCollectionDefinition)}}> _collections;
                       
-                      public RazorStatic_CollectionPagesStoreFactory(HtmlRenderer renderer)
+                      public RazorStatic_PageCollectionsStore(HtmlRenderer renderer)
                       {
                           _renderer    = renderer;
-                          _collections = new Dictionary<string, {{nameof(ICollectionPagesStore)}}>
+                          _collections = new Dictionary<string, {{nameof(IPageCollectionDefinition)}}>
                           {
                               {{string.Join(",\n            ", pagesForFactory.Select(kvp => $"[@\"{kvp.Key}\"] = new {kvp.Value}(renderer)"))}}
                           }
                           .ToFrozenDictionary();
                       }
                       
-                      public bool {{nameof(ICollectionPagesStoreFactory.TryGetCollection)}}(string key, [MaybeNullWhen(false)] out {{nameof(ICollectionPagesStore)}} collection)
+                      public bool {{nameof(IPageCollectionsStore.TryGetCollection)}}(string key, [MaybeNullWhen(false)] out {{nameof(IPageCollectionDefinition)}} collection)
                       {
                           return _collections.TryGetValue(key, out collection);
                       }

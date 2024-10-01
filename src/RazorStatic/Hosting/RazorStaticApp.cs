@@ -59,10 +59,10 @@ public static class RazorStaticApp
                 }
 
                 if (assembliesTypes.FirstOrDefault(
-                        type => typeof(ICollectionPagesStoreFactory)
+                        type => typeof(IPageCollectionsStore)
                             .IsAssignableFrom(type)) is { } pagesStoreFactory)
                 {
-                    services.AddSingleton(typeof(ICollectionPagesStoreFactory), pagesStoreFactory);
+                    services.AddSingleton(typeof(IPageCollectionsStore), pagesStoreFactory);
                 }
 
                 if (assembliesTypes.FirstOrDefault(
