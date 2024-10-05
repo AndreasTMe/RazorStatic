@@ -110,11 +110,15 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
                   
                           public Task<string> {{nameof(IPagesStore.RenderComponentAsync)}}(string filePath) => _renderer.Dispatcher.InvokeAsync(async () =>
                           {
-                              var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
-                              {
-                                  [nameof({{nameof(FileComponentBase)}}.{{nameof(FileComponentBase.PageFilePath)}})] = filePath
-                              });
-                              var output = await _renderer.RenderComponentAsync(Types[filePath], parameters).ConfigureAwait(false);
+                              var type = Types[filePath];
+                              var parameters = type.IsSubclassOf(typeof({{nameof(FileComponentBase)}}))
+                                  ? ParameterView.FromDictionary(new Dictionary<string, object?>
+                                                                {
+                                                                    [nameof({{nameof(FileComponentBase)}}.{{nameof(FileComponentBase.PageFilePath)}})] = filePath
+                                                                })
+                                  : ParameterView.Empty;
+                  
+                              var output = await _renderer.RenderComponentAsync(type, parameters).ConfigureAwait(false);
                               return output.ToHtmlString();
                           });
                           
