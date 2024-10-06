@@ -36,28 +36,5 @@ internal sealed class RazorStaticAppHostBuilder : IRazorStaticAppHostBuilder
         return this;
     }
 
-    public IRazorStaticAppHostBuilder UseServiceProviderFactory<TContainerBuilder>(
-        IServiceProviderFactory<TContainerBuilder> factory)
-        where TContainerBuilder : notnull
-    {
-        _builder.UseServiceProviderFactory(factory);
-        return this;
-    }
-
-    public IRazorStaticAppHostBuilder UseServiceProviderFactory<TContainerBuilder>(
-        Func<HostBuilderContext, IServiceProviderFactory<TContainerBuilder>> factory)
-        where TContainerBuilder : notnull
-    {
-        _builder.UseServiceProviderFactory(factory);
-        return this;
-    }
-
-    public IRazorStaticAppHostBuilder ConfigureContainer<TContainerBuilder>(
-        Action<HostBuilderContext, TContainerBuilder> configure)
-    {
-        _builder.ConfigureContainer(configure);
-        return this;
-    }
-
     public IRazorStaticAppHost Build() => new RazorStaticAppHost(_builder.Build());
 }

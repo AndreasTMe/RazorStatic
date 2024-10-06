@@ -7,7 +7,9 @@ using RazorStatic.Configuration;
 using RazorStatic.Core;
 using RazorStatic.FileSystem;
 using RazorStatic.Shared;
+using RazorStatic.Utilities;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace RazorStatic.Hosting;
@@ -51,26 +53,9 @@ public static class RazorStaticApp
                                                .Where(type => !type.IsInterface)
                                                .ToList();
 
-                if (assembliesTypes.FirstOrDefault(
-                        type => typeof(IPagesStore)
-                            .IsAssignableFrom(type)) is { } pagesStore)
-                {
-                    services.AddSingleton(typeof(IPagesStore), pagesStore);
-                }
-
-                if (assembliesTypes.FirstOrDefault(
-                        type => typeof(IPageCollectionsStore)
-                            .IsAssignableFrom(type)) is { } pagesStoreFactory)
-                {
-                    services.AddSingleton(typeof(IPageCollectionsStore), pagesStoreFactory);
-                }
-
-                if (assembliesTypes.FirstOrDefault(
-                        type => typeof(ITailwindBuilder)
-                            .IsAssignableFrom(type)) is { } tailwindConfig)
-                {
-                    services.AddSingleton(typeof(ITailwindBuilder), tailwindConfig);
-                }
+                services.AddSingletonOrNull<IPagesStore, NullPagesStore>(assembliesTypes);
+                services.AddSingletonOrNull<IPageCollectionsStore, NullPageCollectionsStore>(assembliesTypes);
+                services.AddSingletonOrNull<ITailwindBuilder, NullTailwindBuilder>(assembliesTypes);
 
                 services.AddTransient<IFileWriter, FileWriter>();
                 services.AddTransient<IRazorStaticRenderer, RazorStaticRenderer>();
@@ -82,7 +67,21 @@ public static class RazorStaticApp
                 if (options.ShouldServe)
                     services.AddHostedService<RazorStaticHostedService>();
             });
-
         return new RazorStaticAppHostBuilder(builder);
+    }
+
+    private static void AddSingletonOrNull<TService, TNullImplementation>(this IServiceCollection services,
+                                                                          List<Type> types)
+        where TService : class
+        where TNullImplementation : TService, new()
+    {
+        if (types.FirstOrDefault(type => typeof(TService).IsAssignableFrom(type)) is { } implementationType)
+        {
+            services.AddSingleton(typeof(TService), implementationType);
+        }
+        else
+        {
+            services.AddSingleton<TService>(new TNullImplementation());
+        }
     }
 }

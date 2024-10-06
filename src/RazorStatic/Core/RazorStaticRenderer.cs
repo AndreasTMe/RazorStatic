@@ -5,6 +5,7 @@ using RazorStatic.Configuration;
 using RazorStatic.FileSystem;
 using RazorStatic.Utilities;
 using RazorStatic.Shared;
+using RazorStatic.Shared.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -45,6 +46,16 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
 
     public async Task RenderAsync()
     {
+        if (string.IsNullOrWhiteSpace(_pagesStore.RootPath))
+        {
+            _logger.LogError(
+                "No project path was defined. Make sure the '{Store}' was generated using the '{Attribute}' attribute.",
+                nameof(IPagesStore),
+                nameof(PagesStoreAttribute));
+
+            return;
+        }
+
         var razorFiles = Directory.GetFiles(_pagesStore.RootPath, "*.razor", SearchOption.AllDirectories)
                                   .GroupBy(file => file[..file.LastIndexOf(Path.DirectorySeparatorChar)])
                                   .Select(
@@ -139,6 +150,9 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
                                                     .ConfigureAwait(false);
                     }
 
+                    if (string.IsNullOrWhiteSpace(pageHtml))
+                        return;
+
                     var fileInfo = GenerateFileInfo(renderedResult.FileName, collection.RootPath, true);
                     await _fileWriter.WriteAsync(pageHtml, fileInfo.Name, _rootPath + fileInfo.Directory)
                                      .ConfigureAwait(false);
@@ -157,6 +171,9 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
                 pageHtml = await _pagesStore.RenderLayoutComponentAsync(layouts[i].FullPath, pageHtml)
                                             .ConfigureAwait(false);
             }
+
+            if (string.IsNullOrWhiteSpace(pageHtml))
+                return;
 
             var fileInfo = GenerateFileInfo(leaf.FullPath, _pagesStore.RootPath);
             await _fileWriter.WriteAsync(pageHtml, fileInfo.Name, _rootPath + fileInfo.Directory).ConfigureAwait(false);

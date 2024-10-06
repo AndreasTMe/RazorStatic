@@ -19,16 +19,5 @@ public interface IRazorStaticAppHostBuilder
 
     IRazorStaticAppHostBuilder ConfigureServices(Action<HostBuilderContext, IServiceCollection> configure);
 
-    IRazorStaticAppHostBuilder UseServiceProviderFactory<TContainerBuilder>(
-        IServiceProviderFactory<TContainerBuilder> factory)
-        where TContainerBuilder : notnull;
-
-    IRazorStaticAppHostBuilder UseServiceProviderFactory<TContainerBuilder>(
-        Func<HostBuilderContext, IServiceProviderFactory<TContainerBuilder>> factory)
-        where TContainerBuilder : notnull;
-
-    IRazorStaticAppHostBuilder ConfigureContainer<TContainerBuilder>(
-        Action<HostBuilderContext, TContainerBuilder> configure);
-
     IRazorStaticAppHost Build();
 }

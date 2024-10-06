@@ -14,14 +14,14 @@ internal sealed class RazorStaticAppHost : IRazorStaticAppHost
 {
     private readonly IHost                           _host;
     private readonly IRazorStaticRenderer            _renderer;
-    private readonly ITailwindBuilder?               _tailwindBuilder;
+    private readonly ITailwindBuilder                _tailwindBuilder;
     private readonly RazorStaticConfigurationOptions _configuration;
 
     public RazorStaticAppHost(IHost host)
     {
         _host            = host;
         _renderer        = host.Services.GetRequiredService<IRazorStaticRenderer>();
-        _tailwindBuilder = host.Services.GetService<ITailwindBuilder>();
+        _tailwindBuilder = host.Services.GetRequiredService<ITailwindBuilder>();
         _configuration   = host.Services.GetRequiredService<IOptions<RazorStaticConfigurationOptions>>().Value;
     }
 
@@ -33,9 +33,7 @@ internal sealed class RazorStaticAppHost : IRazorStaticAppHost
         {
             await _host.StartAsync(cts.Token).ConfigureAwait(false);
 
-            if (_tailwindBuilder is not null)
-                await _tailwindBuilder.BuildAsync().ConfigureAwait(false);
-
+            await _tailwindBuilder.BuildAsync().ConfigureAwait(false);
             await _renderer.RenderAsync().ConfigureAwait(false);
 
             if (_configuration.ShouldServe)
