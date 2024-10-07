@@ -1,16 +1,17 @@
-﻿@using RazorStatic.ConsoleApp.Services
+﻿@using RazorStatic.ConsoleApp.Layouts
+@using RazorStatic.ConsoleApp.Services
 
 @inject ITestService TestService
 
 @{
-    var message  = TestService.Message;
+    var message = TestService.Message;
 }
 
-<h1 class="text-6xl text-amber-400">Home Page</h1>
-
-<p>@message</p>
-
-<button onclick="showAlert('everybody')">Click Me</button>
+<RootLayout>
+    <h1 class="text-6xl text-amber-400">Home Page</h1>
+    <p>@message</p>
+    <button onclick="showAlert('everybody')">Click Me</button>
+</RootLayout>
 
 <script>
     function showAlert(value) {

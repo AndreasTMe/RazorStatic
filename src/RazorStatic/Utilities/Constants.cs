@@ -9,7 +9,6 @@ internal static class Constants
     public static class Page
     {
         public const string Index  = nameof(Index);
-        public const string Layout = nameof(Layout);
 
         public const string Error404 = "404";
         public const string Error500 = "500";
@@ -17,7 +16,6 @@ internal static class Constants
         private static readonly FrozenSet<string> Reserved = new HashSet<string>
         {
             Index.ToLowerInvariant(),
-            Layout.ToLowerInvariant(),
             Error404,
             Error500
         }.ToFrozenSet();

@@ -121,18 +121,6 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
                               var output = await _renderer.RenderComponentAsync(type, parameters).ConfigureAwait(false);
                               return output.ToHtmlString();
                           });
-                          
-                          public Task<string> {{nameof(IPagesStore.RenderLayoutComponentAsync)}}(string filePath, string htmlBody) => _renderer.Dispatcher.InvokeAsync(async () =>
-                          {
-                              var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
-                              {
-                                  [nameof(LayoutComponentBase.Body)] = GetRenderFragment(htmlBody)
-                              });
-                              var output = await _renderer.RenderComponentAsync(Types[filePath], parameters).ConfigureAwait(false);
-                              return output.ToHtmlString();
-                          });
-                          
-                          private static RenderFragment GetRenderFragment(string html) => b => b.AddMarkupContent(0, html);
                   #nullable disable
                       }
                   }

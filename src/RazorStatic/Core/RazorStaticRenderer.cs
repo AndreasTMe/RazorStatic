@@ -76,10 +76,9 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         }
 
         var topLevelDir = razorFiles[0];
-        if (topLevelDir.Value.Length == 0
-            || topLevelDir.Value.All(f => Path.GetFileNameWithoutExtension(f) != Constants.Page.Layout))
+        if (topLevelDir.Value.All(f => Path.GetFileNameWithoutExtension(f) != Constants.Page.Index))
         {
-            throw new ArgumentException("The root directory should contain at least a Layout razor file");
+            throw new ArgumentException("The root directory should contain an Index razor file");
         }
 
         var root = new Node();
@@ -104,7 +103,7 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         var directory = razorFiles[index];
 
         foreach (var file in directory.Value)
-            root.AddLeaf(new Leaf(file), Path.GetFileNameWithoutExtension(file) == Constants.Page.Layout);
+            root.AddLeaf(new Leaf(file));
 
         for (var i = 1; i < razorFiles.Length; i++)
         {
@@ -114,7 +113,7 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
             if (!razorFiles[i].Key.Path.StartsWith(directory.Key.Path))
                 continue;
 
-            var node = new Node(root);
+            var node = new Node();
             BuildPageTreeRecursive(node, razorFiles, i);
 
             root.AddNode(node);
@@ -126,7 +125,7 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         var tasks = new List<Task>();
 
         foreach (var leaf in node.Leaves)
-            tasks.Add(GeneratePageTaskAsync(leaf, node.Layouts));
+            tasks.Add(GeneratePageTaskAsync(leaf));
 
         foreach (var childNode in node.Nodes)
             tasks.AddRange(GeneratePageTasksRecursiveAsync(childNode));
@@ -134,26 +133,19 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         return tasks;
     }
 
-    private async Task GeneratePageTaskAsync(Leaf leaf, IReadOnlyList<Leaf> layouts)
+    private async Task GeneratePageTaskAsync(Leaf leaf)
     {
         if (leaf.IsDynamicPath)
         {
             var pageType = _pagesStore.GetPageType(leaf.FullPath);
             if (_pageCollectionsStore.TryGetCollection(leaf.FullPath, out var collection))
             {
-                await foreach (var renderedResult in collection.RenderComponentsAsync(leaf.FullPath, pageType))
+                await foreach (var (fileName, pageHtml) in collection.RenderComponentsAsync(leaf.FullPath, pageType))
                 {
-                    var pageHtml = renderedResult.Content;
-                    for (var i = layouts.Count - 1; i >= 0; i--)
-                    {
-                        pageHtml = await _pagesStore.RenderLayoutComponentAsync(layouts[i].FullPath, pageHtml)
-                                                    .ConfigureAwait(false);
-                    }
-
-                    if (string.IsNullOrWhiteSpace(pageHtml))
+                    if (string.IsNullOrWhiteSpace(fileName) || string.IsNullOrWhiteSpace(pageHtml))
                         return;
 
-                    var fileInfo = GenerateFileInfo(renderedResult.FileName, collection.RootPath, true);
+                    var fileInfo = GenerateFileInfo(fileName, collection.RootPath, true);
                     await _fileWriter.WriteAsync(pageHtml, fileInfo.Name, _rootPath + fileInfo.Directory)
                                      .ConfigureAwait(false);
 
@@ -166,11 +158,6 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         else
         {
             var pageHtml = await _pagesStore.RenderComponentAsync(leaf.FullPath).ConfigureAwait(false);
-            for (var i = layouts.Count - 1; i >= 0; i--)
-            {
-                pageHtml = await _pagesStore.RenderLayoutComponentAsync(layouts[i].FullPath, pageHtml)
-                                            .ConfigureAwait(false);
-            }
 
             if (string.IsNullOrWhiteSpace(pageHtml))
                 return;
