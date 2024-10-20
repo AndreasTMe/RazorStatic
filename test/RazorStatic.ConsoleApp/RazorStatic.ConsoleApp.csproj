@@ -10,18 +10,9 @@
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     </PropertyGroup>
 
-    <PropertyGroup>
-        <RazorStaticPagesDir>\Pages</RazorStaticPagesDir>
-        <RazorStaticContentDir>\Content</RazorStaticContentDir>
-        <RazorStaticStylesDir>\Styles</RazorStaticStylesDir>
-    </PropertyGroup>
-
     <ItemGroup>
         <CompilerVisibleProperty Include="ProjectDir"/>
         <CompilerVisibleProperty Include="OutputPath"/>
-        <CompilerVisibleProperty Include="RazorStaticPagesDir"/>
-        <CompilerVisibleProperty Include="RazorStaticContentDir"/>
-        <CompilerVisibleProperty Include="RazorStaticStylesDir"/>
     </ItemGroup>
 
     <ItemGroup>

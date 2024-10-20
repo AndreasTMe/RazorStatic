@@ -6,12 +6,11 @@ using RazorStatic.Shared.Attributes;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using System.Diagnostics;
 
 namespace RazorStatic.Analyzers;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-internal sealed class PagesStoreSyntaxAnalyzer : DiagnosticAnalyzer
+internal sealed class DirectoriesSetupSyntaxAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "Rst1000";
 
@@ -44,7 +43,7 @@ internal sealed class PagesStoreSyntaxAnalyzer : DiagnosticAnalyzer
         description: Description,
         customTags: "CompilationEnd");
 
-    private static readonly string PagesStore = nameof(PagesStoreAttribute)
+    private static readonly string DirectoriesSetup = nameof(DirectoriesSetupAttribute)
         .Replace(nameof(Attribute), string.Empty);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = [Rule];
@@ -65,11 +64,8 @@ internal sealed class PagesStoreSyntaxAnalyzer : DiagnosticAnalyzer
                         if (syntaxContext.Node is not AttributeSyntax attributeSyntax)
                             return;
 
-                        if (!attributeSyntax.Name.ToString().Equals(PagesStore))
+                        if (!attributeSyntax.Name.ToString().Equals(DirectoriesSetup))
                             return;
-
-                        var classDeclarationSyntax = attributeSyntax.FirstAncestorOrSelf<ClassDeclarationSyntax>();
-                        Debug.Assert(classDeclarationSyntax is not null, "Attribute must be applied to a class.");
 
                         diagnostics.Add(Diagnostic.Create(Rule, attributeSyntax.GetLocation()));
                     },

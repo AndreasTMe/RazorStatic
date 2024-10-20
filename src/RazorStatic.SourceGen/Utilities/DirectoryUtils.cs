@@ -10,17 +10,11 @@ internal static partial class DirectoryUtils
     {
         options.TryGetValue("build_property.ProjectDir", out var projectDir);
         options.TryGetValue("build_property.OutputPath", out var outputPath);
-        options.TryGetValue("build_property.RazorStaticPagesDir", out var pagesDir);
-        options.TryGetValue("build_property.RazorStaticContentDir", out var contentDir);
-        options.TryGetValue("build_property.RazorStaticStylesDir", out var stylesDir);
 
         return new CsProjProperties
         {
-            ProjectDir = projectDir,
-            OutputPath = projectDir + Evaluate(outputPath),
-            PagesDir   = projectDir + Evaluate(pagesDir),
-            ContentDir = projectDir + Evaluate(contentDir),
-            StylesDir  = projectDir + Evaluate(stylesDir)
+            ProjectDir = projectDir?.TrimEnd(Path.DirectorySeparatorChar),
+            OutputPath = projectDir + Evaluate(outputPath?.TrimEnd(Path.DirectorySeparatorChar)),
         };
     }
 

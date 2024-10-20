@@ -42,6 +42,8 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         _rootPath = options.Value.IsAbsoluteOutputPath
             ? options.Value.OutputPath
             : @$"{Environment.CurrentDirectory}\{options.Value.OutputPath}";
+
+        var files = Directory.GetFiles(Directory.GetCurrentDirectory(), "*", SearchOption.AllDirectories);
     }
 
     public async Task RenderAsync()
@@ -51,7 +53,7 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
             _logger.LogError(
                 "No project path was defined. Make sure the '{Store}' was generated using the '{Attribute}' attribute.",
                 nameof(IPagesStore),
-                nameof(PagesStoreAttribute));
+                nameof(DirectoriesSetupAttribute));
 
             return;
         }

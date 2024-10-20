@@ -1,5 +1,10 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Operations;
+using RazorStatic.SourceGen.Utilities;
+using System.Collections.Frozen;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace RazorStatic.SourceGen.Extensions;
 
@@ -8,31 +13,20 @@ internal static class SyntaxNodeExtensions
     public static bool IsTargetAttributeNode(this SyntaxNode node, string name) =>
         node is AttributeSyntax attributeNode && attributeNode.Name.ToString().Equals(name);
 
-    public static string GetFullNamespace(this SyntaxNode? node)
+    public static AttributeMemberData GetAttributeMembers(this SyntaxNode node, SemanticModel semanticModel)
     {
-        var currentNamespace = string.Empty;
+        var attributeSyntax = (AttributeSyntax)node;
+        var properties      = new Dictionary<string, string>();
 
-        while (true)
+        foreach (var argument in attributeSyntax.ArgumentList!.Arguments.Where(syntax => syntax.NameEquals is not null))
         {
-            switch (node)
-            {
-                case null:
-                    return currentNamespace;
-                case NamespaceDeclarationSyntax namespaceDeclaration:
-                    currentNamespace = currentNamespace.Length > 0
-                        ? $"{namespaceDeclaration.Name}.{currentNamespace}"
-                        : namespaceDeclaration.Name.ToString();
+            if (semanticModel.GetOperation(argument) is not ISimpleAssignmentOperation operation)
+                continue;
 
-                    break;
-                case FileScopedNamespaceDeclarationSyntax fileScopedNamespaceDeclaration:
-                    currentNamespace = currentNamespace.Length > 0
-                        ? $"{fileScopedNamespaceDeclaration.Name}.{currentNamespace}"
-                        : fileScopedNamespaceDeclaration.Name.ToString();
-
-                    break;
-            }
-
-            node = node.Parent;
+            if (operation.Value.ConstantValue is { HasValue: true, Value: string value })
+                properties[argument.NameEquals!.Name.ToString()] = value;
         }
+
+        return new AttributeMemberData(properties.ToFrozenDictionary());
     }
 }

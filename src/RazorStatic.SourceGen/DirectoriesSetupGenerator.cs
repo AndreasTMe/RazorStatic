@@ -1,24 +1,18 @@
 ﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using RazorStatic.Shared;
 using RazorStatic.Shared.Attributes;
 using RazorStatic.Shared.Components;
 using RazorStatic.SourceGen.Extensions;
 using RazorStatic.SourceGen.Utilities;
 using System;
-using System.Collections.Frozen;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 
 namespace RazorStatic.SourceGen;
 
 [Generator]
-internal sealed class PagesStoreGenerator : IIncrementalGenerator
+internal sealed class DirectoriesSetupGenerator : IIncrementalGenerator
 {
-    private static readonly string PagesStore = nameof(PagesStoreAttribute)
-        .Replace(nameof(Attribute), string.Empty);
-
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var configOptionsProvider = context.AnalyzerConfigOptionsProvider
@@ -26,59 +20,44 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
                                                static (provider, _) =>
                                                    DirectoryUtils.ReadCsProj(provider.GlobalOptions));
 
-        var syntaxProvider = context.SyntaxProvider
-                                    .CreateSyntaxProvider(
-                                        static (node, _) => node.IsTargetAttributeNode(PagesStore),
-                                        static (ctx, _) => GetTargetAttributeNodeData(ctx.Node))
-                                    .Where(
-                                        static classInfo =>
-                                            !string.IsNullOrWhiteSpace(classInfo.ClassName)
-                                            && !string.IsNullOrWhiteSpace(classInfo.Namespace));
+        var directoriesSetupSyntaxProvider = context.GetDirectoriesSetupSyntaxProvider();
 
         var compilationProvider = context.CompilationProvider
                                          .Select(static (compilation, _) => compilation.AssemblyName)
                                          .Combine(configOptionsProvider)
                                          .Select(static (combine, _) => new Capture(combine.Right, combine.Left))
-                                         .Combine(syntaxProvider.Collect())
+                                         .Combine(directoriesSetupSyntaxProvider.Collect())
                                          .Select(
                                              static (combine, _) => combine.Left with
                                              {
-                                                 ClassInfos = combine.Right
+                                                 DirectorySetup = combine.Right.IsDefaultOrEmpty
+                                                     ? default
+                                                     : combine.Right[0]
                                              });
 
         context.RegisterSourceOutput(compilationProvider, Execute);
     }
 
-    private static AttributeClassInfo GetTargetAttributeNodeData(SyntaxNode node)
-    {
-        var attributeSyntax        = (AttributeSyntax)node;
-        var classDeclarationSyntax = attributeSyntax.FirstAncestorOrSelf<ClassDeclarationSyntax>();
-
-        return new AttributeClassInfo(
-            classDeclarationSyntax?.Identifier.ToString() ?? string.Empty,
-            classDeclarationSyntax.GetFullNamespace(),
-            classDeclarationSyntax?.Modifiers.Select(m => m.Text).ToImmutableArray() ?? ImmutableArray<string>.Empty,
-            FrozenDictionary<string, string>.Empty);
-    }
-
     private static void Execute(SourceProductionContext context, Capture capture)
     {
         if (string.IsNullOrWhiteSpace(capture.Properties.ProjectDir)
-            || string.IsNullOrWhiteSpace(capture.Properties.PagesDir)
             || string.IsNullOrWhiteSpace(capture.AssemblyName)
-            || capture.ClassInfos.Length != 1)
+            || capture.DirectorySetup == default)
             return;
 
         try
         {
-            var pages = Directory.GetFiles(capture.Properties.PagesDir, "*.razor", SearchOption.AllDirectories)
-                                 .ToArray();
+            var pagesDir = Path.Combine(
+                capture.Properties.ProjectDir,
+                capture.DirectorySetup.Properties[nameof(DirectoriesSetupAttribute.Pages)]);
+            var pages = Directory.GetFiles(pagesDir, "*.razor", SearchOption.AllDirectories);
 
             var typeMappings = pages.Select(pagePath => GetDirectoryToPageTypePair(pagePath, capture));
 
-            var classInfo = capture.ClassInfos[0];
+            const string className = $"RazorStatic_{nameof(IPagesStore)}_Impl";
+
             context.AddSource(
-                $"RazorStatic_{classInfo.ClassName}.g.cs",
+                $"{className}.g.cs",
                 $$"""
                   using Microsoft.AspNetCore.Components;
                   using Microsoft.AspNetCore.Components.Web;
@@ -89,9 +68,9 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
                   using System.Collections.Generic;
                   using System.Threading.Tasks;
 
-                  namespace {{classInfo.Namespace}}
+                  namespace RazorStatic.Shared
                   {
-                      {{string.Join(" ", classInfo.Modifiers)}} class {{classInfo.ClassName}} : {{nameof(IPagesStore)}}
+                      internal sealed class {{className}} : {{nameof(IPagesStore)}}
                       {
                   #nullable enable
                           private static readonly FrozenDictionary<string, Type> Types = new Dictionary<string, Type>()
@@ -102,9 +81,9 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
                           
                           private readonly HtmlRenderer _renderer;
                   
-                          public string {{nameof(IPagesStore.RootPath)}} => @"{{capture.Properties.PagesDir}}";
+                          public string {{nameof(IPagesStore.RootPath)}} => @"{{pagesDir}}";
                           
-                          public {{classInfo.ClassName}}(HtmlRenderer renderer) => _renderer = renderer;
+                          public {{className}}(HtmlRenderer renderer) => _renderer = renderer;
                           
                           public Type GetPageType(string filePath) => Types[filePath];
                   

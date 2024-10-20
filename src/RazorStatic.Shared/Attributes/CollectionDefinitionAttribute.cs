@@ -5,7 +5,7 @@ namespace RazorStatic.Shared.Attributes;
 /// <summary>
 /// TODO: Documentation
 /// </summary>
-[AttributeUsage(AttributeTargets.Class)]
+[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
 public sealed class CollectionDefinitionAttribute : Attribute
 {
     public required string PageRoute { get; set; }

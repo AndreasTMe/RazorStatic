@@ -6,9 +6,16 @@ namespace RazorStatic.Utilities;
 
 internal static class Constants
 {
+    public static class Static
+    {
+        public const string CssDirectory    = "_css";
+        public const string JsDirectory     = "_js";
+        public const string ImagesDirectory = "_images";
+    }
+
     public static class Page
     {
-        public const string Index  = nameof(Index);
+        public const string Index = nameof(Index);
 
         public const string Error404 = "404";
         public const string Error500 = "500";

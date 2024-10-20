@@ -1,17 +1,15 @@
 ﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Operations;
 using RazorStatic.Shared;
 using RazorStatic.Shared.Attributes;
 using RazorStatic.Shared.Components;
 using RazorStatic.SourceGen.Extensions;
 using RazorStatic.SourceGen.Utilities;
 using System;
-using System.Collections.Frozen;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
+using Capture = RazorStatic.SourceGen.Utilities.Capture;
 
 namespace RazorStatic.SourceGen;
 
@@ -31,69 +29,52 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
                                                static (provider, _) =>
                                                    DirectoryUtils.ReadCsProj(provider.GlobalOptions));
 
+        var directoriesSetupSyntaxProvider = context.GetDirectoriesSetupSyntaxProvider();
         var syntaxProvider = context.SyntaxProvider
                                     .CreateSyntaxProvider(
                                         static (node, _) => node.IsTargetAttributeNode(CollectionDefinition),
-                                        static (ctx, _) => GetTargetAttributeNodeData(ctx.Node, ctx.SemanticModel))
-                                    .Where(
-                                        static classInfo =>
-                                            !string.IsNullOrWhiteSpace(classInfo.ClassName)
-                                            && !string.IsNullOrWhiteSpace(classInfo.Namespace));
+                                        static (ctx, _) => ctx.Node.GetAttributeMembers(ctx.SemanticModel));
 
         var compilationProvider = context.CompilationProvider
                                          .Select(static (compilation, _) => compilation.AssemblyName)
                                          .Combine(configOptionsProvider)
                                          .Select(static (combine, _) => new Capture(combine.Right, combine.Left))
+                                         .Combine(directoriesSetupSyntaxProvider.Collect())
+                                         .Select(
+                                             static (combine, _) => combine.Left with
+                                             {
+                                                 DirectorySetup = combine.Right.IsDefaultOrEmpty
+                                                     ? default
+                                                     : combine.Right[0]
+                                             })
                                          .Combine(syntaxProvider.Collect())
                                          .Select(
                                              static (combine, _) => combine.Left with
                                              {
-                                                 ClassInfos = combine.Right
+                                                 AttributeMembers = combine.Right
                                              });
 
         context.RegisterSourceOutput(compilationProvider, Execute);
     }
 
-    private static AttributeClassInfo GetTargetAttributeNodeData(SyntaxNode node, SemanticModel semanticModel)
-    {
-        var attributeSyntax = (AttributeSyntax)node;
-        var properties      = new Dictionary<string, string>();
-
-        foreach (var argument in attributeSyntax.ArgumentList!.Arguments.Where(syntax => syntax.NameEquals is not null))
-        {
-            if (semanticModel.GetOperation(argument) is not ISimpleAssignmentOperation operation)
-                continue;
-
-            if (operation.Value.ConstantValue is { HasValue: true, Value: string value })
-                properties[argument.NameEquals!.Name.ToString()] = value;
-        }
-
-        var classDeclarationSyntax = attributeSyntax.FirstAncestorOrSelf<ClassDeclarationSyntax>();
-
-        return new AttributeClassInfo(
-            classDeclarationSyntax?.Identifier.ToString() ?? string.Empty,
-            classDeclarationSyntax.GetFullNamespace(),
-            classDeclarationSyntax?.Modifiers.Select(m => m.Text).ToImmutableArray() ?? ImmutableArray<string>.Empty,
-            properties.ToFrozenDictionary());
-    }
-
     private static void Execute(SourceProductionContext context, Capture capture)
     {
         if (string.IsNullOrWhiteSpace(capture.Properties.ProjectDir)
-            || string.IsNullOrWhiteSpace(capture.Properties.PagesDir)
-            || string.IsNullOrWhiteSpace(capture.Properties.ContentDir)
             || string.IsNullOrWhiteSpace(capture.AssemblyName)
-            || capture.ClassInfos.IsDefaultOrEmpty)
+            || capture.AttributeMembers.IsDefaultOrEmpty)
             return;
 
         var pagesForFactory = new Dictionary<string, string>();
+        var pagesDirName    = capture.DirectorySetup.Properties[nameof(DirectoriesSetupAttribute.Pages)];
+        var contentDirName  = capture.DirectorySetup.Properties[nameof(DirectoriesSetupAttribute.Content)];
 
-        foreach (var classInfo in capture.ClassInfos.Where(
+        foreach (var attributeInfo in capture.AttributeMembers.Where(
                      info => info.Properties.ContainsKey(PageRoute) && info.Properties.ContainsKey(ContentDirectory)))
         {
             try
             {
-                var routeDir = capture.Properties.PagesDir + classInfo.Properties[PageRoute];
+                var routeName = attributeInfo.Properties[PageRoute];
+                var routeDir  = Path.Combine(capture.Properties.ProjectDir, pagesDirName, routeName);
                 var pageFile = Directory.GetFiles(routeDir, "*.razor", SearchOption.AllDirectories)
                                         .FirstOrDefault(
                                             file =>
@@ -106,12 +87,19 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
                 if (string.IsNullOrWhiteSpace(pageFile))
                     continue;
 
-                var collectionDir = capture.Properties.ContentDir + classInfo.Properties[ContentDirectory];
+                var collectionDir = Path.Combine(
+                    capture.Properties.ProjectDir,
+                    contentDirName,
+                    attributeInfo.Properties[ContentDirectory]);
+                var collectionRootDir = collectionDir[..collectionDir.LastIndexOf(Path.DirectorySeparatorChar)];
                 var markdownFiles = Directory.GetFiles(collectionDir, "*.md", SearchOption.AllDirectories)
                                              .Select(file => $"@\"{file}\"");
 
+                var routeNameNoSpecialChars = new Regex("[^a-zA-Z0-9_]").Replace(routeName, "");
+                var className = $"RazorStatic_{nameof(IPageCollectionDefinition)}_ImplFor{routeNameNoSpecialChars}";
+
                 context.AddSource(
-                    $"RazorStatic_{classInfo.ClassName}.g.cs",
+                    $"{className}.g.cs",
                     $$"""
                       using Microsoft.AspNetCore.Components;
                       using Microsoft.AspNetCore.Components.Web;
@@ -122,9 +110,9 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
                       using System.Collections.Generic;
                       using System.Threading.Tasks;
 
-                      namespace {{classInfo.Namespace}}
+                      namespace RazorStatic.Shared
                       {
-                          {{string.Join(" ", classInfo.Modifiers)}} class {{classInfo.ClassName}} : {{nameof(IPageCollectionDefinition)}}
+                          internal sealed class {{className}} : {{nameof(IPageCollectionDefinition)}}
                           {
                       #nullable enable
                               private static readonly FrozenSet<string> ContentFilePaths = new HashSet<string>()
@@ -135,9 +123,9 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
                               
                               private readonly HtmlRenderer _renderer;
                               
-                              public string {{nameof(IPageCollectionDefinition.RootPath)}} => @"{{capture.Properties.ContentDir}}";
+                              public string {{nameof(IPageCollectionDefinition.RootPath)}} => @"{{collectionRootDir}}";
                               
-                              public {{classInfo.ClassName}}(HtmlRenderer renderer) => _renderer = renderer;
+                              public {{className}}(HtmlRenderer renderer) => _renderer = renderer;
                       
                               public async IAsyncEnumerable<RenderedResult> {{nameof(IPageCollectionDefinition.RenderComponentsAsync)}}(string filePath, Type pageType)
                               {
@@ -161,7 +149,7 @@ internal class CollectionDefinitionGenerator : IIncrementalGenerator
                       }
                       """);
 
-                pagesForFactory[pageFile] = classInfo.ClassName;
+                pagesForFactory[pageFile] = className;
             }
             catch (Exception)
             {
