@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <metadata>
         <id>RazorStatic</id>
-        <version>0.2.0</version>
+        <version>0.2.1</version>
         <title>RazorStatic</title>
         <description>A way to create static sites using Razor components.</description>
         <authors>Andreas T.</authors>

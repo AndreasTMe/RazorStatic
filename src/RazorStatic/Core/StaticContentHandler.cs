@@ -47,17 +47,6 @@ internal sealed class StaticContentHandler : IStaticContentHandler
                 finalCopyTasks.AddRange(cssCopyTasks);
             }
 
-            var tailwindOutDir = Path.Combine(Environment.CurrentDirectory, Constants.Tailwind.Output);
-            if (Directory.Exists(tailwindOutDir))
-            {
-                var tailwindSource    = new DirectoryInfo(tailwindOutDir);
-                var tailwindCopyTasks = CopyToOutput(tailwindSource, "*.css", Constants.Static.CssDirectory);
-                if (tailwindCopyTasks.Count > 0)
-                {
-                    finalCopyTasks.AddRange(tailwindCopyTasks);
-                }
-            }
-
             var jsCopyTasks = CopyToOutput(source, "*.js", Constants.Static.JsDirectory);
             if (jsCopyTasks.Count > 0)
             {
@@ -67,6 +56,19 @@ internal sealed class StaticContentHandler : IStaticContentHandler
             if (finalCopyTasks.Count > 0)
             {
                 await Task.WhenAll(finalCopyTasks).ConfigureAwait(false);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(_directoriesSetup.Tailwind))
+        {
+            var tailwindOutDir = Path.Combine(Environment.CurrentDirectory, Constants.Tailwind.Output);
+            Debug.Assert(Directory.Exists(tailwindOutDir));
+
+            var tailwindSource    = new DirectoryInfo(tailwindOutDir);
+            var tailwindCopyTasks = CopyToOutput(tailwindSource, "*.css", Constants.Static.CssDirectory);
+            if (tailwindCopyTasks.Count > 0)
+            {
+                await Task.WhenAll(tailwindCopyTasks);
             }
         }
     }
