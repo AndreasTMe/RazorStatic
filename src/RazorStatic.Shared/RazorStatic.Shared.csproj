@@ -16,7 +16,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.0-rc.1.24452.1" />
+        <InternalsVisibleTo Include="RazorStatic"/>
+        <InternalsVisibleTo Include="RazorStatic.Analyzers"/>
+        <InternalsVisibleTo Include="RazorStatic.SourceGen"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.0-rc.1.24452.1"/>
     </ItemGroup>
 
 </Project>

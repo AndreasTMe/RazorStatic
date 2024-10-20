@@ -1,6 +1,10 @@
-﻿using RazorStatic.Shared;
+﻿using Microsoft.Extensions.Options;
+using RazorStatic.Configuration;
+using RazorStatic.Shared;
 using RazorStatic.Shared.Attributes;
+using RazorStatic.Shared.Utilities;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -11,11 +15,16 @@ namespace RazorStatic.Core;
 
 internal sealed class StaticContentHandler : IStaticContentHandler
 {
-    private readonly IDirectoriesSetup _directoriesSetup;
+    private readonly IDirectoriesSetup                         _directoriesSetup;
+    private readonly IOptions<RazorStaticConfigurationOptions> _options;
 
-    public StaticContentHandler(IDirectoriesSetup directoriesSetup) => _directoriesSetup = directoriesSetup;
+    public StaticContentHandler(IDirectoriesSetup directoriesSetup, IOptions<RazorStaticConfigurationOptions> options)
+    {
+        _directoriesSetup = directoriesSetup;
+        _options          = options;
+    }
 
-    public Task HandleAsync()
+    public async Task HandleAsync()
     {
         if (!string.IsNullOrWhiteSpace(_directoriesSetup.Static))
         {
@@ -28,34 +37,53 @@ internal sealed class StaticContentHandler : IStaticContentHandler
             Debug.Assert(directoriesSetupAttributes.Length == 1);
             Debug.Assert(!string.IsNullOrWhiteSpace(directoriesSetupAttributes[0].Static));
 
-            var targetDir = Path.Combine(Environment.CurrentDirectory, directoriesSetupAttributes[0].Static!);
-            CopyDirectories(_directoriesSetup.Static, targetDir);
-        }
+            var source = new DirectoryInfo(_directoriesSetup.Static);
 
-        return Task.CompletedTask;
+            var finalCopyTasks = new List<Task>();
+
+            var cssCopyTasks = CopyToOutput(source, "*.css", Constants.Static.CssDirectory);
+            if (cssCopyTasks.Count > 0)
+            {
+                finalCopyTasks.AddRange(cssCopyTasks);
+            }
+
+            var tailwindOutDir = Path.Combine(Environment.CurrentDirectory, Constants.Tailwind.Output);
+            if (Directory.Exists(tailwindOutDir))
+            {
+                var tailwindSource    = new DirectoryInfo(tailwindOutDir);
+                var tailwindCopyTasks = CopyToOutput(tailwindSource, "*.css", Constants.Static.CssDirectory);
+                if (tailwindCopyTasks.Count > 0)
+                {
+                    finalCopyTasks.AddRange(tailwindCopyTasks);
+                }
+            }
+
+            var jsCopyTasks = CopyToOutput(source, "*.js", Constants.Static.JsDirectory);
+            if (jsCopyTasks.Count > 0)
+            {
+                finalCopyTasks.AddRange(finalCopyTasks);
+            }
+
+            if (finalCopyTasks.Count > 0)
+            {
+                await Task.WhenAll(finalCopyTasks).ConfigureAwait(false);
+            }
+        }
     }
 
-    private static void CopyDirectories(string sourceDirectory, string targetDirectory)
+    private List<Task> CopyToOutput(DirectoryInfo source, string fileExtension, string targetDirName)
     {
-        var diSource = new DirectoryInfo(sourceDirectory);
-        var diTarget = new DirectoryInfo(targetDirectory);
-
-        CopyDirectoriesRecursive(diSource, diTarget);
-    }
-
-    private static void CopyDirectoriesRecursive(DirectoryInfo source, DirectoryInfo target)
-    {
-        Directory.CreateDirectory(target.FullName);
-
-        foreach (var fi in source.GetFiles())
+        var files = source.GetFiles(fileExtension, SearchOption.AllDirectories);
+        if (files.Length <= 0)
         {
-            fi.CopyTo(Path.Combine(target.FullName, fi.Name), true);
+            return [];
         }
 
-        foreach (var diSourceSubDir in source.GetDirectories())
-        {
-            var nextTargetSubDir = target.CreateSubdirectory(diSourceSubDir.Name);
-            CopyDirectoriesRecursive(diSourceSubDir, nextTargetSubDir);
-        }
+        var dir = Path.Combine(Environment.CurrentDirectory, _options.Value.OutputPath, targetDirName);
+        Directory.CreateDirectory(dir);
+
+        return files.Select(file => Task.FromResult(file.CopyTo(Path.Combine(dir, file.Name), true)))
+                    .Cast<Task>()
+                    .ToList();
     }
 }

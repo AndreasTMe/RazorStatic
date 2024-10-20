@@ -3,9 +3,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorStatic.Configuration;
 using RazorStatic.FileSystem;
-using RazorStatic.Utilities;
 using RazorStatic.Shared;
 using RazorStatic.Shared.Attributes;
+using RazorStatic.Shared.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -193,7 +193,7 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
 
         var fileName = Path.GetFileNameWithoutExtension(fullPath).ToLowerInvariant();
 
-        return Constants.Page.IsIndex(fileName)
+        return Constants.Page.IsReserved(fileName)
             ? new FileInfo(directoryName, fileName)
             : new FileInfo(
                 directoryName + fileName + Path.DirectorySeparatorChar,

@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using RazorStatic.Shared;
 using RazorStatic.Shared.Attributes;
+using RazorStatic.Shared.Utilities;
 using RazorStatic.SourceGen.Extensions;
 using RazorStatic.SourceGen.Utilities;
 using System;
@@ -12,8 +13,7 @@ namespace RazorStatic.SourceGen;
 [Generator]
 internal class TailwindConfigGenerator : IIncrementalGenerator
 {
-    private const string EntryFile      = nameof(TailwindConfigAttribute.EntryFile);
-    private const string OutputFilePath = @"out\_css"; // TODO: Move to constants file
+    private const string EntryFile = nameof(TailwindConfigAttribute.EntryFile);
 
     private static readonly string TailwindConfig = nameof(TailwindConfigAttribute)
         .Replace(nameof(Attribute), string.Empty);
@@ -52,28 +52,31 @@ internal class TailwindConfigGenerator : IIncrementalGenerator
     {
         if (string.IsNullOrWhiteSpace(capture.Properties.ProjectDir)
             || string.IsNullOrWhiteSpace(capture.Properties.OutputPath)
-            || capture.DirectorySetup == default
-            || capture.AttributeMembers.Length != 1
+            || !capture.DirectorySetup.Properties.TryGetValue(
+                nameof(DirectoriesSetupAttribute.Tailwind),
+                out var tailwindDir)
             || !capture.AttributeMembers[0].Properties.TryGetValue(EntryFile, out var stylesFilePath))
             return;
 
-        var outputFilePath = Path.Combine(OutputFilePath, stylesFilePath.Split(Path.DirectorySeparatorChar)[^1]);
-
         string processStartInfoFileName;
         string processStartInfoArguments;
+
+        var tailwindGeneratedOutputDir = Path.Combine(capture.Properties.OutputPath, Constants.Tailwind.Output);
+        Directory.CreateDirectory(tailwindGeneratedOutputDir);
+
         var command = new StringBuilder()
                       .Append("npx tailwindcss")
                       .Append(" -i ")
                       .Append(
                           Path.Combine(
                               capture.Properties.ProjectDir,
-                              capture.DirectorySetup.Properties[nameof(DirectoriesSetupAttribute.Tailwind)],
+                              tailwindDir,
                               stylesFilePath.TrimStart(Path.DirectorySeparatorChar)))
                       .Append(" -o ")
                       .Append(
                           Path.Combine(
-                              capture.Properties.OutputPath,
-                              outputFilePath.TrimStart(Path.DirectorySeparatorChar)))
+                              tailwindGeneratedOutputDir,
+                              stylesFilePath.Split(Path.DirectorySeparatorChar)[^1]))
 #if RELEASE
                       .Append(" --minify")
 #endif
