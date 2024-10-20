@@ -1,12 +1,10 @@
 ﻿using Microsoft.CodeAnalysis;
 using RazorStatic.Shared;
 using RazorStatic.Shared.Attributes;
-using RazorStatic.Shared.Components;
 using RazorStatic.SourceGen.Extensions;
 using RazorStatic.SourceGen.Utilities;
 using System;
 using System.IO;
-using System.Linq;
 
 namespace RazorStatic.SourceGen;
 
@@ -47,59 +45,46 @@ internal sealed class DirectoriesSetupGenerator : IIncrementalGenerator
 
         try
         {
-            var pagesDir = Path.Combine(
-                capture.Properties.ProjectDir,
-                capture.DirectorySetup.Properties[nameof(DirectoriesSetupAttribute.Pages)]);
-            var pages = Directory.GetFiles(pagesDir, "*.razor", SearchOption.AllDirectories);
+            var pagesDir = capture.DirectorySetup.Properties.TryGetValue(
+                nameof(DirectoriesSetupAttribute.Pages),
+                out var pagesDirName)
+                ? Path.Combine(capture.Properties.ProjectDir, pagesDirName)
+                : string.Empty;
 
-            var typeMappings = pages.Select(pagePath => GetDirectoryToPageTypePair(pagePath, capture));
+            var contentDir = capture.DirectorySetup.Properties.TryGetValue(
+                nameof(DirectoriesSetupAttribute.Content),
+                out var contentDirName)
+                ? Path.Combine(capture.Properties.ProjectDir, contentDirName)
+                : string.Empty;
 
-            const string className = $"RazorStatic_{nameof(IPagesStore)}_Impl";
+            var tailwindDir = capture.DirectorySetup.Properties.TryGetValue(
+                nameof(DirectoriesSetupAttribute.Tailwind),
+                out var tailwindDirName)
+                ? Path.Combine(capture.Properties.ProjectDir, tailwindDirName)
+                : string.Empty;
+
+            var staticDir = capture.DirectorySetup.Properties.TryGetValue(
+                nameof(DirectoriesSetupAttribute.Static),
+                out var staticDirName)
+                ? Path.Combine(capture.Properties.ProjectDir, staticDirName)
+                : string.Empty;
+
+            const string className = $"RazorStatic_{nameof(IDirectoriesSetup)}_Impl";
 
             context.AddSource(
                 $"{className}.g.cs",
                 $$"""
-                  using Microsoft.AspNetCore.Components;
-                  using Microsoft.AspNetCore.Components.Web;
                   using RazorStatic.Shared;
-                  using RazorStatic.Shared.Components;
-                  using System;
-                  using System.Collections.Frozen;
-                  using System.Collections.Generic;
-                  using System.Threading.Tasks;
 
                   namespace RazorStatic.Shared
                   {
-                      internal sealed class {{className}} : {{nameof(IPagesStore)}}
+                      internal sealed class {{className}} : {{nameof(IDirectoriesSetup)}}
                       {
                   #nullable enable
-                          private static readonly FrozenDictionary<string, Type> Types = new Dictionary<string, Type>()
-                          {
-                              {{string.Join(",\n            ", typeMappings)}}
-                          }
-                          .ToFrozenDictionary();
-                          
-                          private readonly HtmlRenderer _renderer;
-                  
-                          public string {{nameof(IPagesStore.RootPath)}} => @"{{pagesDir}}";
-                          
-                          public {{className}}(HtmlRenderer renderer) => _renderer = renderer;
-                          
-                          public Type GetPageType(string filePath) => Types[filePath];
-                  
-                          public Task<string> {{nameof(IPagesStore.RenderComponentAsync)}}(string filePath) => _renderer.Dispatcher.InvokeAsync(async () =>
-                          {
-                              var type = Types[filePath];
-                              var parameters = type.IsSubclassOf(typeof({{nameof(FileComponentBase)}}))
-                                  ? ParameterView.FromDictionary(new Dictionary<string, object?>
-                                                                {
-                                                                    [nameof({{nameof(FileComponentBase)}}.{{nameof(FileComponentBase.PageFilePath)}})] = filePath
-                                                                })
-                                  : ParameterView.Empty;
-                  
-                              var output = await _renderer.RenderComponentAsync(type, parameters).ConfigureAwait(false);
-                              return output.ToHtmlString();
-                          });
+                          public string {{nameof(IDirectoriesSetup.Pages)}} => @"{{pagesDir}}";
+                          public string {{nameof(IDirectoriesSetup.Content)}} => @"{{contentDir}}";
+                          public string {{nameof(IDirectoriesSetup.Tailwind)}} => @"{{tailwindDir}}";
+                          public string {{nameof(IDirectoriesSetup.Static)}} => @"{{staticDir}}";
                   #nullable disable
                       }
                   }
@@ -110,7 +95,4 @@ internal sealed class DirectoriesSetupGenerator : IIncrementalGenerator
             // ignored
         }
     }
-
-    private static string GetDirectoryToPageTypePair(string filePath, Capture capture) =>
-        $"[@\"{filePath}\"] = {DirectoryUtils.GetPageType(filePath, capture.Properties.ProjectDir!, capture.AssemblyName!)}";
 }

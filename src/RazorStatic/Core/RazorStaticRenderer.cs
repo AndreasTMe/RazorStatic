@@ -19,6 +19,7 @@ namespace RazorStatic.Core;
 internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
 {
     private readonly HtmlRenderer                 _htmlRenderer;
+    private readonly IDirectoriesSetup            _directoriesSetup;
     private readonly IPagesStore                  _pagesStore;
     private readonly IPageCollectionsStore        _pageCollectionsStore;
     private readonly IFileWriter                  _fileWriter;
@@ -27,6 +28,7 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
     private readonly string _rootPath;
 
     public RazorStaticRenderer(HtmlRenderer htmlRenderer,
+                               IDirectoriesSetup directoriesSetup,
                                IPagesStore pagesStore,
                                IPageCollectionsStore pageCollectionsStore,
                                IFileWriter fileWriter,
@@ -34,6 +36,7 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
                                ILogger<RazorStaticRenderer> logger)
     {
         _htmlRenderer         = htmlRenderer;
+        _directoriesSetup     = directoriesSetup;
         _pagesStore           = pagesStore;
         _pageCollectionsStore = pageCollectionsStore;
         _fileWriter           = fileWriter;
@@ -42,28 +45,26 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         _rootPath = options.Value.IsAbsoluteOutputPath
             ? options.Value.OutputPath
             : @$"{Environment.CurrentDirectory}\{options.Value.OutputPath}";
-
-        var files = Directory.GetFiles(Directory.GetCurrentDirectory(), "*", SearchOption.AllDirectories);
     }
 
     public async Task RenderAsync()
     {
-        if (string.IsNullOrWhiteSpace(_pagesStore.RootPath))
+        if (string.IsNullOrWhiteSpace(_directoriesSetup.Pages))
         {
             _logger.LogError(
-                "No project path was defined. Make sure the '{Store}' was generated using the '{Attribute}' attribute.",
-                nameof(IPagesStore),
+                "No project path was defined. Make sure the '{DirectoriesSetup}' was generated using the '{Attribute}' attribute.",
+                nameof(IDirectoriesSetup),
                 nameof(DirectoriesSetupAttribute));
 
             return;
         }
 
-        var razorFiles = Directory.GetFiles(_pagesStore.RootPath, "*.razor", SearchOption.AllDirectories)
+        var razorFiles = Directory.GetFiles(_directoriesSetup.Pages, "*.razor", SearchOption.AllDirectories)
                                   .GroupBy(file => file[..file.LastIndexOf(Path.DirectorySeparatorChar)])
                                   .Select(
                                       grouping =>
                                       {
-                                          var path = grouping.Key.Replace(_pagesStore.RootPath, string.Empty);
+                                          var path = grouping.Key.Replace(_directoriesSetup.Pages, string.Empty);
                                           return new KeyValuePair<NodePath, ImmutableArray<string>>(
                                               new NodePath(path, path.Count(p => p == Path.DirectorySeparatorChar)),
                                               [..grouping]);
@@ -164,7 +165,7 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
             if (string.IsNullOrWhiteSpace(pageHtml))
                 return;
 
-            var fileInfo = GenerateFileInfo(leaf.FullPath, _pagesStore.RootPath);
+            var fileInfo = GenerateFileInfo(leaf.FullPath, _directoriesSetup.Pages);
             await _fileWriter.WriteAsync(pageHtml, fileInfo.Name, _rootPath + fileInfo.Directory).ConfigureAwait(false);
 
             _logger.LogInformation("Rendered '{Page}.html' page successfully.", fileInfo.Directory + fileInfo.Name);

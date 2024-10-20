@@ -12,7 +12,7 @@ namespace RazorStatic.SourceGen;
 [Generator]
 internal class TailwindConfigGenerator : IIncrementalGenerator
 {
-    private const string RootFilePath   = nameof(TailwindConfigAttribute.RootFilePath);
+    private const string EntryFile      = nameof(TailwindConfigAttribute.EntryFile);
     private const string OutputFilePath = @"out\_css"; // TODO: Move to constants file
 
     private static readonly string TailwindConfig = nameof(TailwindConfigAttribute)
@@ -54,7 +54,7 @@ internal class TailwindConfigGenerator : IIncrementalGenerator
             || string.IsNullOrWhiteSpace(capture.Properties.OutputPath)
             || capture.DirectorySetup == default
             || capture.AttributeMembers.Length != 1
-            || !capture.AttributeMembers[0].Properties.TryGetValue(RootFilePath, out var stylesFilePath))
+            || !capture.AttributeMembers[0].Properties.TryGetValue(EntryFile, out var stylesFilePath))
             return;
 
         var outputFilePath = Path.Combine(OutputFilePath, stylesFilePath.Split(Path.DirectorySeparatorChar)[^1]);

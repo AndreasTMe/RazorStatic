@@ -53,11 +53,13 @@ public static class RazorStaticApp
                                                .Where(type => !type.IsInterface)
                                                .ToList();
 
+                services.AddSingletonOrNull<IDirectoriesSetup, NullDirectoriesSetup>(assembliesTypes);
                 services.AddSingletonOrNull<IPagesStore, NullPagesStore>(assembliesTypes);
                 services.AddSingletonOrNull<IPageCollectionsStore, NullPageCollectionsStore>(assembliesTypes);
                 services.AddSingletonOrNull<ITailwindBuilder, NullTailwindBuilder>(assembliesTypes);
 
                 services.AddTransient<IFileWriter, FileWriter>();
+                services.AddTransient<IStaticContentHandler, StaticContentHandler>();
                 services.AddTransient<IRazorStaticRenderer, RazorStaticRenderer>();
 
                 var options = services.BuildServiceProvider()

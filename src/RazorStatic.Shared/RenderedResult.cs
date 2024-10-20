@@ -1,7 +1,7 @@
 ﻿namespace RazorStatic.Shared;
 
 /// <summary>
-/// 
+/// TODO: Documentation
 /// </summary>
 /// <param name="FileName"></param>
 /// <param name="Content"></param>

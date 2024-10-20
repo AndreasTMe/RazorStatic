@@ -8,5 +8,5 @@ namespace RazorStatic.Shared.Attributes;
 [AttributeUsage(AttributeTargets.Assembly)]
 public sealed class TailwindConfigAttribute : Attribute
 {
-    public required string RootFilePath { get; set; }
+    public required string EntryFile { get; set; }
 }
