@@ -3,7 +3,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using RazorStatic.Configuration;
 using RazorStatic.Core;
-using RazorStatic.Shared;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,16 +14,14 @@ internal sealed class RazorStaticAppHost : IRazorStaticAppHost
     private readonly IHost                           _host;
     private readonly IRazorStaticRenderer            _renderer;
     private readonly IStaticContentHandler           _contentHandler;
-    private readonly ITailwindBuilder                _tailwindBuilder;
     private readonly RazorStaticConfigurationOptions _configuration;
 
     public RazorStaticAppHost(IHost host)
     {
-        _host            = host;
-        _renderer        = host.Services.GetRequiredService<IRazorStaticRenderer>();
-        _contentHandler  = host.Services.GetRequiredService<IStaticContentHandler>();
-        _tailwindBuilder = host.Services.GetRequiredService<ITailwindBuilder>();
-        _configuration   = host.Services.GetRequiredService<IOptions<RazorStaticConfigurationOptions>>().Value;
+        _host           = host;
+        _renderer       = host.Services.GetRequiredService<IRazorStaticRenderer>();
+        _contentHandler = host.Services.GetRequiredService<IStaticContentHandler>();
+        _configuration  = host.Services.GetRequiredService<IOptions<RazorStaticConfigurationOptions>>().Value;
     }
 
     public async Task RunAsync()
@@ -36,7 +33,6 @@ internal sealed class RazorStaticAppHost : IRazorStaticAppHost
             await _host.StartAsync(cts.Token).ConfigureAwait(false);
 
             await _contentHandler.HandleAsync().ConfigureAwait(false);
-            await _tailwindBuilder.BuildAsync().ConfigureAwait(false);
             await _renderer.RenderAsync().ConfigureAwait(false);
 
             if (_configuration.ShouldServe)

@@ -26,11 +26,6 @@ public static class Constants
         internal static bool IsReserved(string pageName) => Reserved.Contains(pageName);
     }
 
-    internal static class Tailwind
-    {
-        public const string Output = "razor-static-generated-tailwind";
-    }
-
     public static class Static
     {
         public const string CssDirectory    = "_css";

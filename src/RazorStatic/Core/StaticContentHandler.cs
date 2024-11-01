@@ -58,19 +58,6 @@ internal sealed class StaticContentHandler : IStaticContentHandler
                 await Task.WhenAll(finalCopyTasks).ConfigureAwait(false);
             }
         }
-
-        if (!string.IsNullOrWhiteSpace(_directoriesSetup.Tailwind))
-        {
-            var tailwindOutDir = Path.Combine(Environment.CurrentDirectory, Constants.Tailwind.Output);
-            Debug.Assert(Directory.Exists(tailwindOutDir));
-
-            var tailwindSource    = new DirectoryInfo(tailwindOutDir);
-            var tailwindCopyTasks = CopyToOutput(tailwindSource, "*.css", Constants.Static.CssDirectory);
-            if (tailwindCopyTasks.Count > 0)
-            {
-                await Task.WhenAll(tailwindCopyTasks);
-            }
-        }
     }
 
     private List<Task> CopyToOutput(DirectoryInfo source, string fileExtension, string targetDirName)
@@ -84,8 +71,69 @@ internal sealed class StaticContentHandler : IStaticContentHandler
         var dir = Path.Combine(Environment.CurrentDirectory, _options.Value.OutputPath, targetDirName);
         Directory.CreateDirectory(dir);
 
-        return files.Select(file => Task.FromResult(file.CopyTo(Path.Combine(dir, file.Name), true)))
-                    .Cast<Task>()
+        var commonDirectory       = GetCommonDirectory(source.FullName, files);
+        var isNullOrWhiteSpaceDir = string.IsNullOrWhiteSpace(commonDirectory);
+
+        return files.Select(
+                        file => Task.Run(
+                            () =>
+                            {
+                                var actualDir = dir;
+                                if (!isNullOrWhiteSpaceDir)
+                                {
+                                    var subDir = file.DirectoryName
+                                                     ?.Replace(commonDirectory, string.Empty)
+                                                     .TrimStart(Path.DirectorySeparatorChar)
+                                                 ?? string.Empty;
+
+                                    if (!string.IsNullOrWhiteSpace(subDir))
+                                    {
+                                        actualDir = Path.Combine(dir, subDir);
+                                        Directory.CreateDirectory(actualDir);
+                                    }
+                                }
+
+                                file.CopyTo(Path.Combine(actualDir, file.Name), true);
+                            }))
                     .ToList();
+    }
+
+    private static string GetCommonDirectory(string sourceDirectory, FileInfo[] files)
+    {
+        var directories = files.Select(f => f.DirectoryName?.Replace(sourceDirectory, string.Empty))
+                               .Where(n => n is not null)
+                               .Select(n => n!.Split(Path.DirectorySeparatorChar))
+                               .ToArray();
+
+        if (directories.Length == 0 || directories[0].Length == 0)
+        {
+            return sourceDirectory;
+        }
+
+        var index = 0;
+        while (true)
+        {
+            if (index >= directories[0].Length)
+            {
+                return sourceDirectory;
+            }
+
+            var current = directories[0][index];
+
+            for (var i = 1; i < directories.Length; i++)
+            {
+                if (index >= directories[i].Length || current != directories[i][index])
+                {
+                    return sourceDirectory;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(current))
+            {
+                sourceDirectory += Path.DirectorySeparatorChar + current;
+            }
+
+            index++;
+        }
     }
 }

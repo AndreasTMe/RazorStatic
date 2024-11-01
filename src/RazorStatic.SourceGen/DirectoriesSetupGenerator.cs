@@ -57,12 +57,6 @@ internal sealed class DirectoriesSetupGenerator : IIncrementalGenerator
                 ? Path.Combine(capture.Properties.ProjectDir, contentDirName)
                 : string.Empty;
 
-            var tailwindDir = capture.DirectorySetup.Properties.TryGetValue(
-                nameof(DirectoriesSetupAttribute.Tailwind),
-                out var tailwindDirName)
-                ? Path.Combine(capture.Properties.ProjectDir, tailwindDirName)
-                : string.Empty;
-
             var staticDir = capture.DirectorySetup.Properties.TryGetValue(
                 nameof(DirectoriesSetupAttribute.Static),
                 out var staticDirName)
@@ -83,7 +77,6 @@ internal sealed class DirectoriesSetupGenerator : IIncrementalGenerator
                   #nullable enable
                           public string {{nameof(IDirectoriesSetup.Pages)}} => @"{{pagesDir}}";
                           public string {{nameof(IDirectoriesSetup.Content)}} => @"{{contentDir}}";
-                          public string {{nameof(IDirectoriesSetup.Tailwind)}} => @"{{tailwindDir}}";
                           public string {{nameof(IDirectoriesSetup.Static)}} => @"{{staticDir}}";
                   #nullable disable
                       }
