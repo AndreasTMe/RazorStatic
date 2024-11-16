@@ -1,8 +1,8 @@
 ﻿using Microsoft.Extensions.Options;
+using RazorStatic.Abstractions;
 using RazorStatic.Configuration;
-using RazorStatic.Shared;
-using RazorStatic.Shared.Attributes;
-using RazorStatic.Shared.Utilities;
+using RazorStatic.Attributes;
+using RazorStatic.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

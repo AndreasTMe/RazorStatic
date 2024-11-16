@@ -1,5 +1,5 @@
-﻿using System.Collections.Frozen;
+﻿using System.Collections.Immutable;
 
 namespace RazorStatic.SourceGen.Utilities;
 
-internal readonly record struct AttributeMemberData(FrozenDictionary<string, string> Properties);
+internal readonly record struct AttributeMemberData(ImmutableDictionary<string, string> Properties);

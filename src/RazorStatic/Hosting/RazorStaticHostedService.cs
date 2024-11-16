@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorStatic.Configuration;
-using RazorStatic.Shared.Utilities;
+using RazorStatic.Utilities;
 using System;
 using System.IO;
 using System.Net;

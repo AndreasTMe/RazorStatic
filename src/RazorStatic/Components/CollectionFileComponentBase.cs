@@ -2,7 +2,7 @@
 using System;
 using System.IO;
 
-namespace RazorStatic.Shared.Components;
+namespace RazorStatic.Components;
 
 /// <summary>
 /// TODO: Documentation

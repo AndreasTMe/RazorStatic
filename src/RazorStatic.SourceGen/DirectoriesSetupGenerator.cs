@@ -1,6 +1,4 @@
 ﻿using Microsoft.CodeAnalysis;
-using RazorStatic.Shared;
-using RazorStatic.Shared.Attributes;
 using RazorStatic.SourceGen.Extensions;
 using RazorStatic.SourceGen.Utilities;
 using System;
@@ -18,7 +16,7 @@ internal sealed class DirectoriesSetupGenerator : IIncrementalGenerator
                                                static (provider, _) =>
                                                    DirectoryUtils.ReadCsProj(provider.GlobalOptions));
 
-        var directoriesSetupSyntaxProvider = context.GetDirectoriesSetupSyntaxProvider();
+        var directoriesSetupSyntaxProvider = context.GetSyntaxProvider(Constants.Attributes.DirectoriesSetup.Name);
 
         var compilationProvider = context.CompilationProvider
                                          .Select(static (compilation, _) => compilation.AssemblyName)
@@ -46,38 +44,38 @@ internal sealed class DirectoriesSetupGenerator : IIncrementalGenerator
         try
         {
             var pagesDir = capture.DirectorySetup.Properties.TryGetValue(
-                nameof(DirectoriesSetupAttribute.Pages),
+                Constants.Attributes.DirectoriesSetup.Members.Pages,
                 out var pagesDirName)
-                ? Path.Combine(capture.Properties.ProjectDir, pagesDirName)
+                ? Path.Combine(capture.Properties.ProjectDir!, pagesDirName)
                 : string.Empty;
 
             var contentDir = capture.DirectorySetup.Properties.TryGetValue(
-                nameof(DirectoriesSetupAttribute.Content),
+                Constants.Attributes.DirectoriesSetup.Members.Content,
                 out var contentDirName)
-                ? Path.Combine(capture.Properties.ProjectDir, contentDirName)
+                ? Path.Combine(capture.Properties.ProjectDir!, contentDirName)
                 : string.Empty;
 
             var staticDir = capture.DirectorySetup.Properties.TryGetValue(
-                nameof(DirectoriesSetupAttribute.Static),
+                Constants.Attributes.DirectoriesSetup.Members.Static,
                 out var staticDirName)
-                ? Path.Combine(capture.Properties.ProjectDir, staticDirName)
+                ? Path.Combine(capture.Properties.ProjectDir!, staticDirName)
                 : string.Empty;
 
-            const string className = $"RazorStatic_{nameof(IDirectoriesSetup)}_Impl";
+            const string className = $"RazorStatic_{Constants.Interfaces.DirectoriesSetup.Name}_Impl";
 
             context.AddSource(
                 $"{className}.g.cs",
                 $$"""
-                  using RazorStatic.Shared;
+                  using {{Constants.Namespaces.RazorStatic}}.{{Constants.Namespaces.Abstractions}};
 
-                  namespace RazorStatic.Shared
+                  namespace {{Constants.Namespaces.RazorStatic}}.{{Constants.Namespaces.Core}}
                   {
-                      internal sealed class {{className}} : {{nameof(IDirectoriesSetup)}}
+                      internal sealed class {{className}} : {{Constants.Interfaces.DirectoriesSetup.Name}}
                       {
                   #nullable enable
-                          public string {{nameof(IDirectoriesSetup.Pages)}} => @"{{pagesDir}}";
-                          public string {{nameof(IDirectoriesSetup.Content)}} => @"{{contentDir}}";
-                          public string {{nameof(IDirectoriesSetup.Static)}} => @"{{staticDir}}";
+                          public string {{Constants.Interfaces.DirectoriesSetup.Members.Pages}} => @"{{pagesDir}}";
+                          public string {{Constants.Interfaces.DirectoriesSetup.Members.Content}} => @"{{contentDir}}";
+                          public string {{Constants.Interfaces.DirectoriesSetup.Members.Static}} => @"{{staticDir}}";
                   #nullable disable
                       }
                   }

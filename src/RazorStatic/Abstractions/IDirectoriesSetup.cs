@@ -1,4 +1,4 @@
-﻿namespace RazorStatic.Shared;
+﻿namespace RazorStatic.Abstractions;
 
 public interface IDirectoriesSetup
 {

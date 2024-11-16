@@ -1,19 +1,15 @@
 ﻿using Microsoft.CodeAnalysis;
-using RazorStatic.Shared.Attributes;
 using RazorStatic.SourceGen.Utilities;
-using System;
 
 namespace RazorStatic.SourceGen.Extensions;
 
 internal static class IncrementalGeneratorInitializationContextExtensions
 {
-    private static readonly string DirectoriesSetup = nameof(DirectoriesSetupAttribute)
-        .Replace(nameof(Attribute), string.Empty);
-
-    public static IncrementalValuesProvider<AttributeMemberData> GetDirectoriesSetupSyntaxProvider(
-        this IncrementalGeneratorInitializationContext context) =>
+    public static IncrementalValuesProvider<AttributeMemberData> GetSyntaxProvider(
+        this IncrementalGeneratorInitializationContext context,
+        string attributeName) =>
         context.SyntaxProvider
                .CreateSyntaxProvider(
-                   static (node, _) => node.IsTargetAttributeNode(DirectoriesSetup),
+                   (node, _) => node.IsTargetAttributeNode(attributeName),
                    static (ctx, _) => ctx.Node.GetAttributeMembers(ctx.SemanticModel));
 }

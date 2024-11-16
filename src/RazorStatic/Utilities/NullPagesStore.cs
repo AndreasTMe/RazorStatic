@@ -1,4 +1,4 @@
-﻿using RazorStatic.Shared;
+﻿using RazorStatic.Abstractions;
 using System;
 using System.Threading.Tasks;
 

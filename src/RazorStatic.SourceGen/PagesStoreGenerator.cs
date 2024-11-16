@@ -1,7 +1,4 @@
 ﻿using Microsoft.CodeAnalysis;
-using RazorStatic.Shared;
-using RazorStatic.Shared.Attributes;
-using RazorStatic.Shared.Components;
 using RazorStatic.SourceGen.Extensions;
 using RazorStatic.SourceGen.Utilities;
 using System;
@@ -20,7 +17,7 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
                                                static (provider, _) =>
                                                    DirectoryUtils.ReadCsProj(provider.GlobalOptions));
 
-        var directoriesSetupSyntaxProvider = context.GetDirectoriesSetupSyntaxProvider();
+        var directoriesSetupSyntaxProvider = context.GetSyntaxProvider(Constants.Attributes.DirectoriesSetup.Name);
 
         var compilationProvider = context.CompilationProvider
                                          .Select(static (compilation, _) => compilation.AssemblyName)
@@ -48,29 +45,29 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
         try
         {
             var pagesDir = Path.Combine(
-                capture.Properties.ProjectDir,
-                capture.DirectorySetup.Properties[nameof(DirectoriesSetupAttribute.Pages)]);
+                capture.Properties.ProjectDir!,
+                capture.DirectorySetup.Properties[Constants.Attributes.DirectoriesSetup.Members.Pages]);
             var pages = Directory.GetFiles(pagesDir, "*.razor", SearchOption.AllDirectories);
 
             var typeMappings = pages.Select(pagePath => GetDirectoryToPageTypePair(pagePath, capture));
 
-            const string className = $"RazorStatic_{nameof(IPagesStore)}_Impl";
+            const string className = $"RazorStatic_{Constants.Interfaces.PagesStore.Name}_Impl";
 
             context.AddSource(
                 $"{className}.g.cs",
                 $$"""
                   using Microsoft.AspNetCore.Components;
                   using Microsoft.AspNetCore.Components.Web;
-                  using RazorStatic.Shared;
-                  using RazorStatic.Shared.Components;
+                  using {{Constants.Namespaces.RazorStatic}}.{{Constants.Namespaces.Abstractions}};
+                  using {{Constants.Namespaces.RazorStatic}}.{{Constants.Namespaces.Components}};
                   using System;
                   using System.Collections.Frozen;
                   using System.Collections.Generic;
                   using System.Threading.Tasks;
 
-                  namespace RazorStatic.Shared
+                  namespace {{Constants.Namespaces.RazorStatic}}.{{Constants.Namespaces.Core}}
                   {
-                      internal sealed class {{className}} : {{nameof(IPagesStore)}}
+                      internal sealed class {{className}} : {{Constants.Interfaces.PagesStore.Name}}
                       {
                   #nullable enable
                           private static readonly FrozenDictionary<string, Type> Types = new Dictionary<string, Type>()
@@ -80,22 +77,22 @@ internal sealed class PagesStoreGenerator : IIncrementalGenerator
                           .ToFrozenDictionary();
                           
                           private readonly HtmlRenderer _renderer;
-
+                  
                           public {{className}}(HtmlRenderer renderer) => _renderer = renderer;
                           
                           public Type GetPageType(string filePath) => Types[filePath];
                   
-                          public Task<string> {{nameof(IPagesStore.RenderComponentAsync)}}(string filePath) => _renderer.Dispatcher.InvokeAsync(async () =>
+                          public Task<string> {{Constants.Interfaces.PagesStore.Members.RenderComponentAsync}}(string filePath) => _renderer.Dispatcher.InvokeAsync(async () =>
                           {
                               var type = Types[filePath];
-                              var parameters = type.IsSubclassOf(typeof({{nameof(FileComponentBase)}}))
+                              var parameters = type.IsSubclassOf(typeof({{Constants.Abstractions.FileComponentBase.Name}}))
                                   ? ParameterView.FromDictionary(new Dictionary<string, object?>
-                                                                {
-                                                                    [nameof({{nameof(FileComponentBase)}}.{{nameof(FileComponentBase.PageFilePath)}})] = filePath
-                                                                })
+                                    {
+                                        [nameof({{Constants.Abstractions.FileComponentBase.Name}}.{{Constants.Abstractions.FileComponentBase.Members.PageFilePath}})] = filePath,
+                                    })
                                   : ParameterView.Empty;
                   
-                              var output = await _renderer.RenderComponentAsync(type, parameters).ConfigureAwait(false);
+                              var output = await _renderer.RenderComponentAsync(type, parameters);
                               return output.ToHtmlString();
                           });
                   #nullable disable

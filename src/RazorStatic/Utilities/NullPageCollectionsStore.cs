@@ -1,4 +1,4 @@
-﻿using RazorStatic.Shared;
+﻿using RazorStatic.Abstractions;
 using System.Diagnostics.CodeAnalysis;
 
 namespace RazorStatic.Utilities;

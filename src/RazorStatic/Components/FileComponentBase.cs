@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components;
 
-namespace RazorStatic.Shared.Components;
+namespace RazorStatic.Components;
 
 /// <summary>
 /// TODO: Documentation

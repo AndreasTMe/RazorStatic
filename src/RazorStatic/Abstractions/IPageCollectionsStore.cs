@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-namespace RazorStatic.Shared;
+namespace RazorStatic.Abstractions;
 
 /// <summary>
 /// TODO: Documentation

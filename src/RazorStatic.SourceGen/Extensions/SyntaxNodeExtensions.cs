@@ -2,8 +2,8 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 using RazorStatic.SourceGen.Utilities;
-using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace RazorStatic.SourceGen.Extensions;
@@ -27,6 +27,6 @@ internal static class SyntaxNodeExtensions
                 properties[argument.NameEquals!.Name.ToString()] = value;
         }
 
-        return new AttributeMemberData(properties.ToFrozenDictionary());
+        return new AttributeMemberData(properties.ToImmutableDictionary());
     }
 }

@@ -3,10 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using RazorStatic.Abstractions;
 using RazorStatic.Configuration;
 using RazorStatic.Core;
 using RazorStatic.FileSystem;
-using RazorStatic.Shared;
 using RazorStatic.Utilities;
 using System;
 using System.Collections.Generic;
@@ -49,7 +49,7 @@ public static class RazorStaticApp
                             });
 
                 var assembliesTypes = AppDomain.CurrentDomain.GetAssemblies()
-                                               .SelectMany(assembly => assembly.GetTypes())
+                                               .SelectMany(a => a.GetTypes())
                                                .Where(type => !type.IsInterface)
                                                .ToList();
 
@@ -76,7 +76,8 @@ public static class RazorStaticApp
         where TService : class
         where TNullImplementation : TService, new()
     {
-        if (types.FirstOrDefault(type => typeof(TService).IsAssignableFrom(type)) is { } implementationType)
+        if (types.FirstOrDefault(type => typeof(TService).IsAssignableFrom(type)) is { } implementationType
+            && implementationType != typeof(TNullImplementation))
         {
             services.AddSingleton(typeof(TService), implementationType);
         }

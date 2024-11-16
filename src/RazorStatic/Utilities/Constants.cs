@@ -2,7 +2,7 @@
 using System.Collections.Frozen;
 using System.Collections.Generic;
 
-namespace RazorStatic.Shared.Utilities;
+namespace RazorStatic.Utilities;
 
 public static class Constants
 {

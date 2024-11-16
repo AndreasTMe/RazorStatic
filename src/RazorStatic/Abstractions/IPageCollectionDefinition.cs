@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RazorStatic.Shared;
+namespace RazorStatic.Abstractions;
 
 /// <summary>
 /// TODO: Documentation

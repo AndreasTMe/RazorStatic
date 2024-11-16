@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace RazorStatic.Shared.Attributes;
+namespace RazorStatic.Attributes;
 
 /// <summary>
 /// TODO: Documentation
@@ -8,7 +8,7 @@ namespace RazorStatic.Shared.Attributes;
 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
 public sealed class CollectionDefinitionAttribute : Attribute
 {
-    public required string PageRoute { get; set; }
+    public string? PageRoute { get; set; }
 
-    public required string ContentDirectory { get; set; }
+    public string? ContentDirectory { get; set; }
 }

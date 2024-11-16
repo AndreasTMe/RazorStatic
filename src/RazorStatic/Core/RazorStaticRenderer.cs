@@ -1,11 +1,11 @@
 ﻿using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using RazorStatic.Abstractions;
+using RazorStatic.Attributes;
 using RazorStatic.Configuration;
 using RazorStatic.FileSystem;
-using RazorStatic.Shared;
-using RazorStatic.Shared.Attributes;
-using RazorStatic.Shared.Utilities;
+using RazorStatic.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;

@@ -1,7 +1,6 @@
-﻿using RazorStatic.Shared;
+﻿using RazorStatic.Abstractions;
 
 namespace RazorStatic.Utilities;
-
 
 internal sealed class NullDirectoriesSetup : IDirectoriesSetup
 {
