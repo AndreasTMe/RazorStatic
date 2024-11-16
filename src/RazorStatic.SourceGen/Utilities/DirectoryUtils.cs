@@ -12,11 +12,12 @@ internal static class DirectoryUtils
         options.TryGetValue("build_property.ProjectDir", out var projectDir);
         options.TryGetValue("build_property.OutputPath", out var outputPath);
 
-        return new CsProjProperties
-        {
-            ProjectDir = projectDir?.TrimEnd(Path.DirectorySeparatorChar),
-            OutputPath = projectDir + Evaluate(outputPath?.TrimEnd(Path.DirectorySeparatorChar)),
-        };
+        projectDir ??= "";
+        outputPath ??= "";
+
+        return new CsProjProperties(
+            projectDir.TrimEnd(Path.DirectorySeparatorChar),
+            projectDir + Evaluate(outputPath.TrimEnd(Path.DirectorySeparatorChar)));
     }
 
     private static string Evaluate(string? dir)
@@ -51,7 +52,7 @@ internal static class DirectoryUtils
             {
                 break;
             }
-            
+
             current++;
         }
 

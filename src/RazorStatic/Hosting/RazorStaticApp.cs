@@ -11,6 +11,7 @@ using RazorStatic.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace RazorStatic.Hosting;
 
@@ -48,10 +49,11 @@ public static class RazorStaticApp
                                 options.Evaluate();
                             });
 
-                var assembliesTypes = AppDomain.CurrentDomain.GetAssemblies()
-                                               .SelectMany(a => a.GetTypes())
-                                               .Where(type => !type.IsInterface)
-                                               .ToList();
+                var assembliesTypes = Assembly.GetEntryAssembly()
+                                              ?.GetTypes()
+                                              .Where(type => !type.IsInterface)
+                                              .ToList()
+                                      ?? [];
 
                 services.AddSingletonOrNull<IDirectoriesSetup, NullDirectoriesSetup>(assembliesTypes);
                 services.AddSingletonOrNull<IPagesStore, NullPagesStore>(assembliesTypes);

@@ -2,15 +2,12 @@
 
 internal static class Constants
 {
-    public static class Namespaces
-    {
-        public const string RazorStatic = nameof(RazorStatic);
-        // ReSharper disable once MemberHidesStaticFromOuterClass
-        public const string Abstractions = nameof(Abstractions);
-        public const string Components   = nameof(Components);
-        public const string Core         = nameof(Core);
-    }
-    
+    public const string RazorStaticAbstractionsNamespace = "RazorStatic.Abstractions";
+    public const string RazorStaticAttributesNamespace = "RazorStatic.Attributes";
+    public const string RazorStaticComponentsNamespace = "RazorStatic.Components";
+    public const string RazorStaticCoreNamespace = "RazorStatic.Core";
+    public const string RazorStaticGeneratedNamespace = "RazorStatic.Generated";
+
     public static class Abstractions
     {
         public static class FileComponentBase

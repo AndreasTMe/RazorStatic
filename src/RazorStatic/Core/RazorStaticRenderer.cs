@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorStatic.Abstractions;
-using RazorStatic.Attributes;
 using RazorStatic.Configuration;
 using RazorStatic.FileSystem;
 using RazorStatic.Utilities;
@@ -52,9 +51,8 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         if (string.IsNullOrWhiteSpace(_directoriesSetup.Pages))
         {
             _logger.LogError(
-                "No project path was defined. Make sure the '{DirectoriesSetup}' was generated using the '{Attribute}' attribute.",
-                nameof(IDirectoriesSetup),
-                nameof(DirectoriesSetupAttribute));
+                "No project path was defined. Make sure the '{DirectoriesSetup}' was generated using the appropriate attribute.",
+                nameof(IDirectoriesSetup));
 
             return;
         }

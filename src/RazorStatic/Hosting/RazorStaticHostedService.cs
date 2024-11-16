@@ -75,6 +75,11 @@ internal sealed class RazorStaticHostedService : IHostedService
                             _ = HandleRequestAsync(context, token)
                                 .ContinueWith(_ => _semaphore.Release(), token);
                         }
+                        catch (ObjectDisposedException)
+                        {
+                            // ignored
+                            break;
+                        }
                         catch (OperationCanceledException)
                         {
                             _logger.LogDebug("Cancellation requested for HttpListener.");
@@ -114,11 +119,19 @@ internal sealed class RazorStaticHostedService : IHostedService
             return;
 
         await _semaphore.WaitAsync();
-
-        _server.Stop();
-        _server.Close();
-
-        _semaphore.Release();
+        try
+        {
+            _server.Stop();
+            _server.Close();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred on close.");
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 
     private async Task HandleRequestAsync(HttpListenerContext context, CancellationToken cancellationToken)

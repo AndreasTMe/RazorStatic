@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using RazorStatic.Abstractions;
 using RazorStatic.Configuration;
-using RazorStatic.Attributes;
 using RazorStatic.Utilities;
 using System;
 using System.Collections.Generic;
@@ -28,35 +27,35 @@ internal sealed class StaticContentHandler : IStaticContentHandler
     {
         if (!string.IsNullOrWhiteSpace(_directoriesSetup.Static))
         {
-            var directoriesSetupAttributes = Assembly.GetEntryAssembly()
-                                                     ?.GetCustomAttributes()
-                                                     .Where(a => a is DirectoriesSetupAttribute)
-                                                     .Cast<DirectoriesSetupAttribute>()
-                                                     .ToArray()
-                                             ?? [];
-            Debug.Assert(directoriesSetupAttributes.Length == 1);
-            Debug.Assert(!string.IsNullOrWhiteSpace(directoriesSetupAttributes[0].Static));
-
-            var source = new DirectoryInfo(_directoriesSetup.Static);
-
-            var finalCopyTasks = new List<Task>();
-
-            var cssCopyTasks = CopyToOutput(source, "*.css", Constants.Static.CssDirectory);
-            if (cssCopyTasks.Count > 0)
-            {
-                finalCopyTasks.AddRange(cssCopyTasks);
-            }
-
-            var jsCopyTasks = CopyToOutput(source, "*.js", Constants.Static.JsDirectory);
-            if (jsCopyTasks.Count > 0)
-            {
-                finalCopyTasks.AddRange(finalCopyTasks);
-            }
-
-            if (finalCopyTasks.Count > 0)
-            {
-                await Task.WhenAll(finalCopyTasks).ConfigureAwait(false);
-            }
+            // var directoriesSetupAttributes = Assembly.GetEntryAssembly()
+            //                                          ?.GetCustomAttributes()
+            //                                          .Where(a => a.GetType() == typeof(Attribute) && a.GetType().Name == "DirectoriesSetupAttribute")
+            //                                          .Cast<DirectoriesSetupAttribute>()
+            //                                          .ToArray()
+            //                                  ?? [];
+            // Debug.Assert(directoriesSetupAttributes.Length == 1);
+            // Debug.Assert(!string.IsNullOrWhiteSpace(directoriesSetupAttributes[0].Static));
+            //
+            // var source = new DirectoryInfo(_directoriesSetup.Static);
+            //
+            // var finalCopyTasks = new List<Task>();
+            //
+            // var cssCopyTasks = CopyToOutput(source, "*.css", Constants.Static.CssDirectory);
+            // if (cssCopyTasks.Count > 0)
+            // {
+            //     finalCopyTasks.AddRange(cssCopyTasks);
+            // }
+            //
+            // var jsCopyTasks = CopyToOutput(source, "*.js", Constants.Static.JsDirectory);
+            // if (jsCopyTasks.Count > 0)
+            // {
+            //     finalCopyTasks.AddRange(finalCopyTasks);
+            // }
+            //
+            // if (finalCopyTasks.Count > 0)
+            // {
+            //     await Task.WhenAll(finalCopyTasks).ConfigureAwait(false);
+            // }
         }
     }
 

@@ -1,7 +1,3 @@
 ﻿namespace RazorStatic.SourceGen.Utilities;
 
-internal class CsProjProperties
-{
-    public string? ProjectDir { get; init; }
-    public string? OutputPath { get; init; }
-}
+internal sealed record CsProjProperties(string ProjectDir, string OutputPath);

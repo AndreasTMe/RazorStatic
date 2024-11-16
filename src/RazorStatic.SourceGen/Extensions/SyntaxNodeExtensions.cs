@@ -11,12 +11,24 @@ namespace RazorStatic.SourceGen.Extensions;
 internal static class SyntaxNodeExtensions
 {
     public static bool IsTargetAttributeNode(this SyntaxNode node, string name) =>
-        node is AttributeSyntax attributeNode && attributeNode.Name.ToString().Equals(name);
+        node is CompilationUnitSyntax { AttributeLists.Count: > 0 } cux
+        && cux.AttributeLists.SelectMany(l => l.Attributes).Any(a => a.Name.ToString() == name);
 
-    public static AttributeMemberData GetAttributeMembers(this SyntaxNode node, SemanticModel semanticModel)
+    public static AttributeMemberData GetAttributeMembers(this SyntaxNode node,
+                                                          SemanticModel semanticModel,
+                                                          string attributeName)
     {
-        var attributeSyntax = (AttributeSyntax)node;
-        var properties      = new Dictionary<string, string>();
+        var attributeSyntax = ((CompilationUnitSyntax)node)
+                              .AttributeLists
+                              .SelectMany(a => a.Attributes)
+                              .FirstOrDefault(a => a.Name.ToString() == attributeName);
+
+        if (attributeSyntax is null)
+        {
+            return new AttributeMemberData(ImmutableDictionary<string, string>.Empty);
+        }
+
+        var properties = new Dictionary<string, string>();
 
         foreach (var argument in attributeSyntax.ArgumentList!.Arguments.Where(syntax => syntax.NameEquals is not null))
         {
