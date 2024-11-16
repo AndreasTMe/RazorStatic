@@ -40,10 +40,11 @@ internal class RazorStaticGenerator : IIncrementalGenerator
         var collectionDefinitionPipeline = context.GetSyntaxProvider(Constants.Attributes.CollectionDefinition.Name);
         var pageCollectionsPipeline = pagesStorePipeline.Combine(collectionDefinitionPipeline.Collect())
                                                         .Select(
-                                                            static (combine, _) => combine.Left with
-                                                            {
-                                                                AttributeMembers = combine.Right
-                                                            });
+                                                            static (combine, _) => new Capture(
+                                                                combine.Left.Properties,
+                                                                combine.Left.AssemblyName,
+                                                                combine.Left.DirectorySetup,
+                                                                combine.Right));
         context.RegisterSourceOutput(pageCollectionsPipeline, ExecutePageCollectionsPipeline);
     }
 
@@ -193,7 +194,7 @@ internal class RazorStaticGenerator : IIncrementalGenerator
                                             file =>
                                             {
                                                 var split             = file.Split(Path.DirectorySeparatorChar);
-                                                var fileWithExtension = split[^1];
+                                                var fileWithExtension = split[split.Length - 1];
                                                 return fileWithExtension.StartsWith("[")
                                                        && fileWithExtension.EndsWith("].razor");
                                             });
@@ -205,7 +206,9 @@ internal class RazorStaticGenerator : IIncrementalGenerator
                     capture.Properties.ProjectDir,
                     contentDirName,
                     attributeInfo.Properties[contentDirectory]);
-                var collectionRootDir = collectionDir[..collectionDir.LastIndexOf(Path.DirectorySeparatorChar)];
+                var collectionRootDir = collectionDir.Substring(
+                    0,
+                    collectionDir.LastIndexOf(Path.DirectorySeparatorChar));
                 var markdownFiles = Directory.GetFiles(collectionDir, "*.md", SearchOption.AllDirectories)
                                              .Select(file => $"@\"{file}\"");
 
@@ -315,5 +318,5 @@ internal class RazorStaticGenerator : IIncrementalGenerator
         static (provider, _) => DirectoryUtils.ReadCsProj(provider.GlobalOptions);
 
     private static string GetDirectoryToPageTypePair(string filePath, Capture capture) =>
-        $"[@\"{filePath}\"] = {DirectoryUtils.GetPageType(filePath, capture.Properties.ProjectDir, capture.AssemblyName!)}";
+        $"[@\"{filePath}\"] = {DirectoryUtils.GetPageType(filePath, capture.Properties.ProjectDir, capture.AssemblyName)}";
 }

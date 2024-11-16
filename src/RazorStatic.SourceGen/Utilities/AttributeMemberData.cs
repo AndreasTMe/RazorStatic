@@ -2,4 +2,9 @@
 
 namespace RazorStatic.SourceGen.Utilities;
 
-internal readonly record struct AttributeMemberData(ImmutableDictionary<string, string> Properties);
+internal readonly record struct AttributeMemberData
+{
+    public ImmutableDictionary<string, string> Properties { get; }
+
+    public AttributeMemberData(ImmutableDictionary<string, string> properties) => Properties = properties;
+}

@@ -26,7 +26,7 @@ internal static class DirectoryUtils
             return string.Empty;
 
         if (dir!.StartsWith(Path.DirectorySeparatorChar.ToString()))
-            return dir.Length == 1 ? string.Empty : dir[1..];
+            return dir.Length == 1 ? string.Empty : dir.Substring(1);
 
         return dir;
     }
