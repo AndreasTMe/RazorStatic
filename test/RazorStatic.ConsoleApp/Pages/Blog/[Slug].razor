@@ -1,5 +1,6 @@
 ﻿@using RazorStatic.Components
 @using System.Text.RegularExpressions
+@using RazorStatic.ConsoleApp.Layouts
 
 @inherits CollectionFileComponentBase
 
@@ -8,6 +9,8 @@
     var fragment = CreateRenderFragment($"<h1 style='color:red'>{title}</h1>");
 }
 
-<div class="flex justify-center items-center">
-    @fragment
-</div>
+<RootLayout Css="_css/blog.css">
+    <div class="flex justify-center items-center">
+        @fragment
+    </div>
+</RootLayout>

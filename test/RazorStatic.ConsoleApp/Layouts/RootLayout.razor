@@ -1,28 +1,29 @@
-﻿<!DOCTYPE html>
-<html lang="en">
-
-    <head>
-        <meta charset="utf-8"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-        <base href="/"/>
-
-        <title>My Awesome Site</title>
-
-        <link rel="stylesheet" href="_css/test1.css">
-        <link rel="stylesheet" href="_css/test2.css">
-        <link rel="stylesheet" href="_css/inner/test3.css">
-    </head>
-
-    <body>
-        @ChildContent
-    </body>
-
-    <script src="_js/script.js"></script>
-</html>
-
-@code{
+﻿@code{
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+    
+    [Parameter]
+    public string? Css { get; set; }
 
 }
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <base href="/"/>
+
+    <title>My Awesome Site</title>
+    
+    <link rel="stylesheet" href="@Css">
+</head>
+
+<body>
+@ChildContent
+</body>
+
+<script src="_js/script.js"></script>
+</html>

@@ -65,12 +65,6 @@ internal class RazorStaticGenerator : IIncrementalGenerator
             ? Path.Combine(csProj.ProjectDir, contentDirName)
             : string.Empty;
 
-        var staticDir = attribute.Properties.TryGetValue(
-            Constants.Attributes.DirectoriesSetup.Members.Static,
-            out var staticDirName)
-            ? Path.Combine(csProj.ProjectDir, staticDirName)
-            : string.Empty;
-
         const string className = $"Implementations_{Constants.Interfaces.DirectoriesSetup.Name}";
 
         context.AddSource(
@@ -87,8 +81,6 @@ internal class RazorStaticGenerator : IIncrementalGenerator
                       public string {{Constants.Interfaces.DirectoriesSetup.Members.Pages}} => @"{{pagesDir}}";
                       
                       public string {{Constants.Interfaces.DirectoriesSetup.Members.Content}} => @"{{contentDir}}";
-                      
-                      public string {{Constants.Interfaces.DirectoriesSetup.Members.Static}} => @"{{staticDir}}";
               #nullable disable
                   }
               }

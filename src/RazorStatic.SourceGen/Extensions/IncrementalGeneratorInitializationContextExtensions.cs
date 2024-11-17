@@ -24,8 +24,6 @@ internal static class IncrementalGeneratorInitializationContextExtensions
                               public string {{Constants.Attributes.DirectoriesSetup.Members.Pages}} { get; set; }
                               
                               public string {{Constants.Attributes.DirectoriesSetup.Members.Content}} { get; set; }
-                              
-                              public string {{Constants.Attributes.DirectoriesSetup.Members.Static}} { get; set; }
                           #nullable enable
                           }
                           """,

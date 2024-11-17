@@ -41,7 +41,6 @@ internal static class Constants
             {
                 public const string Pages   = nameof(Pages);
                 public const string Content = nameof(Content);
-                public const string Static  = nameof(Static);
             }
         }
 
@@ -99,7 +98,6 @@ internal static class Constants
             {
                 public const string Pages   = nameof(Pages);
                 public const string Content = nameof(Content);
-                public const string Static  = nameof(Static);
             }
         }
 
