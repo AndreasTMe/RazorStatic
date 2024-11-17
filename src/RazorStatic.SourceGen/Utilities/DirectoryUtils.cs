@@ -20,6 +20,9 @@ internal static class DirectoryUtils
             projectDir + Evaluate(outputPath.TrimEnd(Path.DirectorySeparatorChar)));
     }
 
+    public static string GetDirectoryToPageTypePair(string filePath, Capture capture) =>
+        $"[@\"{filePath}\"] = {GetPageType(filePath, capture.Properties.ProjectDir, capture.AssemblyName)}";
+
     private static string Evaluate(string? dir)
     {
         if (string.IsNullOrWhiteSpace(dir))
@@ -31,7 +34,7 @@ internal static class DirectoryUtils
         return dir;
     }
 
-    public static string GetPageType(string filePath, string projectDir, string assemblyName)
+    private static string GetPageType(string filePath, string projectDir, string assemblyName)
     {
         var relativePath      = GetRelativePath(projectDir, filePath);
         var relativeNamespace = Path.GetDirectoryName(relativePath)?.Replace(Path.DirectorySeparatorChar, '.');

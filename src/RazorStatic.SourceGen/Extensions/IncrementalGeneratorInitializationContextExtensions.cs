@@ -65,7 +65,7 @@ internal static class IncrementalGeneratorInitializationContextExtensions
                           public sealed class {{Constants.Attributes.StaticContent.Name}}Attribute : System.Attribute
                           {
                           #nullable disable
-                              public string[] {{Constants.Attributes.StaticContent.Members.IncludePaths}} { get; set; }
+                              public string {{Constants.Attributes.StaticContent.Members.RootPath}} { get; set; }
                           
                               public string[] {{Constants.Attributes.StaticContent.Members.Extensions}} { get; set; }
                           
@@ -75,7 +75,7 @@ internal static class IncrementalGeneratorInitializationContextExtensions
                           """,
                         Encoding.UTF8)));
 
-    public static IncrementalValuesProvider<AttributeMemberData> GetSyntaxProvider(
+    public static IncrementalValuesProvider<AttributeMembers> GetSyntaxProvider(
         this IncrementalGeneratorInitializationContext context,
         string attributeName) =>
         context.SyntaxProvider.ForAttributeWithMetadataName(

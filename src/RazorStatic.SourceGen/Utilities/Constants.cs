@@ -3,10 +3,10 @@
 internal static class Constants
 {
     public const string RazorStaticAbstractionsNamespace = "RazorStatic.Abstractions";
-    public const string RazorStaticAttributesNamespace = "RazorStatic.Attributes";
-    public const string RazorStaticComponentsNamespace = "RazorStatic.Components";
-    public const string RazorStaticCoreNamespace = "RazorStatic.Core";
-    public const string RazorStaticGeneratedNamespace = "RazorStatic.Generated";
+    public const string RazorStaticAttributesNamespace   = "RazorStatic.Attributes";
+    public const string RazorStaticComponentsNamespace   = "RazorStatic.Components";
+    public const string RazorStaticCoreNamespace         = "RazorStatic.Core";
+    public const string RazorStaticGeneratedNamespace    = "RazorStatic.Generated";
 
     public static class Abstractions
     {
@@ -39,9 +39,15 @@ internal static class Constants
 
             public static class Members
             {
-                public const string Pages   = nameof(Pages);
-                public const string Content = nameof(Content);
+                public const string ProjectRoot = nameof(ProjectRoot);
+                public const string Pages       = nameof(Pages);
+                public const string Content     = nameof(Content);
             }
+        }
+
+        public static class DirectoriesSetupForStaticContent
+        {
+            public const string Name = "I" + nameof(DirectoriesSetupForStaticContent);
         }
 
         public static class PagesStore
@@ -107,9 +113,9 @@ internal static class Constants
 
             public static class Members
             {
-                public const string IncludePaths = nameof(IncludePaths);
-                public const string Extensions   = nameof(Extensions);
-                public const string EntryFile    = nameof(EntryFile);
+                public const string RootPath   = nameof(RootPath);
+                public const string Extensions = nameof(Extensions);
+                public const string EntryFile  = nameof(EntryFile);
             }
         }
     }

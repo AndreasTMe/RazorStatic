@@ -14,31 +14,42 @@ internal static class SyntaxNodeExtensions
         node is CompilationUnitSyntax { AttributeLists.Count: > 0 } cux
         && cux.AttributeLists.SelectMany(l => l.Attributes).Any(a => a.Name.ToString() == name);
 
-    public static AttributeMemberData GetAttributeMembers(this SyntaxNode node,
-                                                          SemanticModel semanticModel,
-                                                          string attributeName)
+    public static AttributeMembers GetAttributeMembers(this SyntaxNode node,
+                                                       SemanticModel semanticModel,
+                                                       string attributeName)
     {
-        var attributeSyntax = ((CompilationUnitSyntax)node)
-                              .AttributeLists
-                              .SelectMany(a => a.Attributes)
-                              .FirstOrDefault(a => a.Name.ToString() == attributeName);
+        var attributeSyntaxes = ((CompilationUnitSyntax)node)
+                                .AttributeLists
+                                .SelectMany(a => a.Attributes)
+                                .Where(a => a.Name.ToString() == attributeName);
 
-        if (attributeSyntax is null)
+        var members = new List<AttributeMemberData>();
+        foreach (var attributeSyntax in attributeSyntaxes)
         {
-            return new AttributeMemberData(ImmutableDictionary<string, string>.Empty);
+            var properties = new Dictionary<string, string>();
+
+            foreach (var argument in attributeSyntax.ArgumentList!.Arguments.Where(s => s.NameEquals is not null))
+            {
+                if (semanticModel.GetOperation(argument) is not ISimpleAssignmentOperation operation)
+                    continue;
+
+                if (operation.Value.ConstantValue is { HasValue: true, Value: string value })
+                {
+                    properties[argument.NameEquals!.Name.ToString()] = value;
+                }
+                else
+                {
+                    var syntax = operation.Value.Syntax.ToFullString();
+                    if (syntax == "null")
+                        continue;
+
+                    properties[argument.NameEquals!.Name.ToString()] = syntax;
+                }
+            }
+
+            members.Add(new AttributeMemberData(properties.ToImmutableDictionary()));
         }
 
-        var properties = new Dictionary<string, string>();
-
-        foreach (var argument in attributeSyntax.ArgumentList!.Arguments.Where(syntax => syntax.NameEquals is not null))
-        {
-            if (semanticModel.GetOperation(argument) is not ISimpleAssignmentOperation operation)
-                continue;
-
-            if (operation.Value.ConstantValue is { HasValue: true, Value: string value })
-                properties[argument.NameEquals!.Name.ToString()] = value;
-        }
-
-        return new AttributeMemberData(properties.ToImmutableDictionary());
+        return new AttributeMembers([..members]);
     }
 }

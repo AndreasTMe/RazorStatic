@@ -8,3 +8,10 @@ internal readonly record struct AttributeMemberData
 
     public AttributeMemberData(ImmutableDictionary<string, string> properties) => Properties = properties;
 }
+
+internal readonly record struct AttributeMembers
+{
+    public ImmutableArray<AttributeMemberData> MemberData { get; }
+
+    public AttributeMembers(ImmutableArray<AttributeMemberData> memberData) => MemberData = memberData;
+}

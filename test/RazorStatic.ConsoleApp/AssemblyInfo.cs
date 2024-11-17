@@ -5,7 +5,7 @@
 [assembly: CollectionDefinition(PageRoute = "Blog", ContentDirectory = "Blog")]
 [assembly: CollectionDefinition(PageRoute = "Product", ContentDirectory = "Product")]
 
-[assembly: StaticContent(IncludePaths = ["wwwroot/css"], EntryFile = "home.css")]
-[assembly: StaticContent(IncludePaths = ["wwwroot/css"], Extensions = [".css"], EntryFile = "blog.css")]
-[assembly: StaticContent(IncludePaths = ["wwwroot/js"], Extensions = [".js"])]
-[assembly: StaticContent(IncludePaths = ["wwwroot/images"], Extensions = [".jpg", ".png"])]
+[assembly: StaticContent(RootPath = "wwwroot/css", EntryFile = "home.css")]
+[assembly: StaticContent(RootPath = "wwwroot/css", Extensions = [".css"], EntryFile = "blog.css")]
+[assembly: StaticContent(RootPath = "wwwroot/js", Extensions = [".js"])]
+[assembly: StaticContent(RootPath = "wwwroot/images", Extensions = [".jpg", ".png"])]

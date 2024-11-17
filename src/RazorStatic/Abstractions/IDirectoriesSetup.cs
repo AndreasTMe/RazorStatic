@@ -2,6 +2,7 @@
 
 public interface IDirectoriesSetup
 {
-    string Pages    { get; }
-    string Content  { get; }
+    string ProjectRoot { get; }
+    string Pages       { get; }
+    string Content     { get; }
 }

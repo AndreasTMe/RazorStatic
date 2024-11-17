@@ -56,6 +56,8 @@ public static class RazorStaticApp
                                       ?? [];
 
                 services.AddSingletonOrNull<IDirectoriesSetup, NullDirectoriesSetup>(assembliesTypes);
+                services.AddSingletonOrNull<IDirectoriesSetupForStaticContent, NullDirectoriesSetupForStaticContent>(
+                    assembliesTypes);
                 services.AddSingletonOrNull<IPagesStore, NullPagesStore>(assembliesTypes);
                 services.AddSingletonOrNull<IPageCollectionsStore, NullPageCollectionsStore>(assembliesTypes);
 

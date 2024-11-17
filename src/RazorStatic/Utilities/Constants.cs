@@ -25,11 +25,4 @@ public static class Constants
 
         internal static bool IsReserved(string pageName) => Reserved.Contains(pageName);
     }
-
-    public static class Static
-    {
-        public const string CssDirectory    = "_css";
-        public const string JsDirectory     = "_js";
-        public const string ImagesDirectory = "_images";
-    }
 }
