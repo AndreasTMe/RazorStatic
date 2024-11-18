@@ -86,6 +86,9 @@ internal sealed class StaticContentHandler : IStaticContentHandler
                 var dir    = CreateDirectoryIfNotExists(targetDirName);
                 var output = Path.Combine(dir, entryFile);
 
+                if (File.Exists(output))
+                    File.WriteAllText(output, "");
+
                 using var writer = new StreamWriter(output, append: true);
 
                 foreach (var (index, line) in lines.Index())
@@ -94,12 +97,12 @@ internal sealed class StaticContentHandler : IStaticContentHandler
                     {
                         foreach (var importLine in importLines)
                         {
-                            writer.WriteLine(importLine);
+                            writer.Write(importLine.Trim());
                         }
                     }
                     else
                     {
-                        writer.WriteLine(line);
+                        writer.Write(line.Trim());
                     }
                 }
             });
