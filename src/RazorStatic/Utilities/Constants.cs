@@ -6,6 +6,8 @@ namespace RazorStatic.Utilities;
 
 public static class Constants
 {
+    public const int BatchSize = 10;
+    
     public static class Page
     {
         public const string Index = nameof(Index);

@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <metadata>
         <id>RazorStatic</id>
-        <version>0.2.2</version>
+        <version>0.2.3</version>
         <title>RazorStatic</title>
         <description>A way to create static sites using Razor components.</description>
         <authors>Andreas T.</authors>
@@ -12,20 +12,16 @@
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
         <dependencies>
             <group targetFramework="net9.0">
-                <dependency id="Microsoft.AspNetCore.Components.Web" version="9.0.0-rc.1.24452.1" />
-                <dependency id="Microsoft.Extensions.DependencyInjection" version="9.0.0-rc.1.24431.7" />
-                <dependency id="Microsoft.Extensions.Hosting" version="9.0.0-rc.1.24431.7" />
+                <dependency id="Microsoft.AspNetCore.Components.Web" version="9.0.0" />
+                <dependency id="Microsoft.Extensions.DependencyInjection" version="9.0.0" />
+                <dependency id="Microsoft.Extensions.Hosting" version="9.0.0" />
             </group>
         </dependencies>
     </metadata>
     <files>
         <file src="src\RazorStatic\bin\Release\net9.0\RazorStatic.dll" target="lib\net9.0" />
         <file src="src\RazorStatic\bin\Release\net9.0\RazorStatic.xml" target="lib\net9.0" />
-        <file src="src\RazorStatic.Shared\bin\Release\net9.0\RazorStatic.Shared.dll" target="lib\net9.0" />
-        <file src="src\RazorStatic.Shared\bin\Release\net9.0\RazorStatic.Shared.xml" target="lib\net9.0" />
         
-        <file src="src\RazorStatic.SourceGen\bin\Release\net9.0\RazorStatic.SourceGen.dll" target="analyzers\dotnet\cs" />
-        <file src="src\RazorStatic.Analyzers\bin\Release\net9.0\RazorStatic.Analyzers.dll" target="analyzers\dotnet\cs" />
-        <file src="src\RazorStatic.Shared\bin\Release\net9.0\RazorStatic.Shared.dll" target="analyzers\dotnet\cs" />
+        <file src="src\RazorStatic.SourceGen\bin\Release\netstandard2.0\RazorStatic.SourceGen.dll" target="analyzers\dotnet\cs" />
     </files>
 </package>

@@ -89,7 +89,11 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
 
         var sw = new Stopwatch();
         sw.Start();
-        await Task.WhenAll(tasks).ConfigureAwait(false);
+        for (var i = 0; i < tasks.Count; i += Constants.BatchSize)
+        {
+            await Task.WhenAll(tasks.Skip(i).Take(Constants.BatchSize))
+                      .ConfigureAwait(false);
+        }
         sw.Stop();
 
         _logger.LogInformation("Rendering elapsed time: {Milliseconds}ms.", sw.ElapsedMilliseconds);

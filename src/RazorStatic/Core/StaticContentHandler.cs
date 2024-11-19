@@ -1,16 +1,18 @@
 ﻿using Microsoft.Extensions.Options;
 using RazorStatic.Abstractions;
 using RazorStatic.Configuration;
+using RazorStatic.Utilities;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace RazorStatic.Core;
 
-internal sealed class StaticContentHandler : IStaticContentHandler
+internal sealed partial class StaticContentHandler : IStaticContentHandler
 {
     private readonly IDirectoriesSetup                         _directories;
     private readonly IDirectoriesSetupForStaticContent         _directoriesStaticContent;
@@ -25,10 +27,10 @@ internal sealed class StaticContentHandler : IStaticContentHandler
         _options                  = options;
     }
 
-    public Task HandleAsync()
+    public async Task HandleAsync()
     {
-        var handleTasks = new List<Task>();
-        var projectRoot = _directories.ProjectRoot;
+        var tasksToHandle = new List<Task>();
+        var projectRoot   = _directories.ProjectRoot;
 
         foreach (var (rootPath, extensions, entryFile) in _directoriesStaticContent)
         {
@@ -42,22 +44,32 @@ internal sealed class StaticContentHandler : IStaticContentHandler
 
             if (IsFileOfType(".css", extensions, entryFile))
             {
-                handleTasks.AddRange(HandleCssFiles(currentRoot, entryFile, targetDirName));
+                tasksToHandle.AddRange(HandleCssFiles(currentRoot, entryFile, targetDirName));
             }
             else if (IsFileOfType(".js", extensions, entryFile))
             {
-                handleTasks.AddRange(HandleJsFiles(currentRoot, entryFile, targetDirName));
+                tasksToHandle.AddRange(HandleJsFiles(currentRoot, entryFile, targetDirName));
             }
 
-            // TODO: Handle more extensions, other than .css and .js
+            foreach (var extension in extensions.SkipWhile(e => e.Equals(".css") || e.Equals(".js")))
+            {
+                tasksToHandle.AddRange(HandleFiles(currentRoot, extension, targetDirName));
+            }
         }
 
-        return handleTasks.Count > 0 ? Task.WhenAll(handleTasks) : Task.CompletedTask;
+        if (tasksToHandle.Count > 0)
+        {
+            for (var i = 0; i < tasksToHandle.Count; i += Constants.BatchSize)
+            {
+                await Task.WhenAll(tasksToHandle.Skip(i).Take(Constants.BatchSize))
+                          .ConfigureAwait(false);
+            }
+        }
     }
 
     private List<Task> HandleCssFiles(DirectoryInfo source, string entryFile, string targetDirName) =>
         string.IsNullOrWhiteSpace(entryFile)
-            ? HandleFiles(source, "*.css", targetDirName)
+            ? HandleFiles(source, ".css", targetDirName)
             : [HandleCssImports(source, entryFile, targetDirName)];
 
     private Task HandleCssImports(DirectoryInfo source, string entryFile, string targetDirName) =>
@@ -65,63 +77,83 @@ internal sealed class StaticContentHandler : IStaticContentHandler
             () =>
             {
                 var lines    = File.ReadAllLines(Path.Combine(source.FullName, entryFile), Encoding.UTF8);
-                var linesMap = new Dictionary<int, string[]>();
+                var urls     = new List<string>();
+                var linesMap = new Dictionary<int, string>();
 
-                foreach (var (fileName, index) in lines.Where(l => l.StartsWith("@import"))
-                                                       .Select(
-                                                           (line, index) =>
-                                                           {
-                                                               var start = line.IndexOf('"');
-                                                               start = start > -1 ? start + 1 : 0;
-                                                               var end = line.LastIndexOf('"');
-                                                               end = end > start ? end : line.Length - 1;
+                foreach (var (lineOrFileName, isUrl, index) in lines.Where(l => l.StartsWith("@import"))
+                                                                    .Select(
+                                                                        (line, index) => 
+                                                                        {
+                                                                            // TODO: This index is incorrect. Fix this.
+                                                                            
+                                                                            var start = line.IndexOf('"');
+                                                                            start = start > -1 ? start + 1 : 0;
 
-                                                               return (line[start..end], index);
-                                                           }))
+                                                                            if (line[..start].Contains("url("))
+                                                                                return (line, true, index);
+
+                                                                            var end = line.LastIndexOf('"');
+                                                                            end = end > start ? end : line.Length - 1;
+
+                                                                            return (line[start..end], false, index);
+                                                                        }))
                 {
-                    var importLines = File.ReadAllLines(Path.Combine(source.FullName, fileName), Encoding.UTF8);
-                    linesMap.TryAdd(index, importLines);
+                    if (isUrl)
+                    {
+                        urls.Add(lineOrFileName);
+                        linesMap.TryAdd(index, string.Empty);
+                        continue;
+                    }
+
+                    var importText = File.ReadAllText(Path.Combine(source.FullName, lineOrFileName), Encoding.UTF8);
+                    linesMap.TryAdd(index, importText);
+                }
+
+                var sb = new StringBuilder();
+                foreach (var url in urls)
+                {
+                    sb.AppendLine(url);
+                }
+
+                foreach (var (index, line) in lines.Index())
+                {
+                    sb.AppendLine(linesMap.GetValueOrDefault(index, line));
                 }
 
                 var dir    = CreateDirectoryIfNotExists(targetDirName);
                 var output = Path.Combine(dir, entryFile);
 
-                if (File.Exists(output))
-                    File.WriteAllText(output, "");
-
-                using var writer = new StreamWriter(output, append: true);
-
-                foreach (var (index, line) in lines.Index())
-                {
-                    if (linesMap.TryGetValue(index, out var importLines))
-                    {
-                        foreach (var importLine in importLines)
-                        {
-                            writer.Write(importLine.Trim());
-                        }
-                    }
-                    else
-                    {
-                        writer.Write(line.Trim());
-                    }
-                }
+                File.WriteAllText(output, WhitespaceRegex().Replace(sb.ToString(), " "), Encoding.UTF8);
             });
 
     private List<Task> HandleJsFiles(DirectoryInfo source, string entryFile, string targetDirName)
     {
-        const string fileExtension = "*.js";
+        const string fileExtension = ".js";
 
         if (string.IsNullOrWhiteSpace(entryFile))
         {
             return HandleFiles(source, fileExtension, targetDirName);
         }
 
-        // TODO: Replace later, use this for now
+        // Handle the following:
+        // ------------------------------------------------------------
+        // Named import:        import { export1, export2 } from "module-name";
+        // Default import:      import defaultExport from "module-name";
+        // Namespace import:    import * as name from "module-name";
+        // Side effect import:  import "module-name";
+        // ------------------------------------------------------------
+
+        // TODO: Replace later, use default behaviour for now
         return HandleFiles(source, fileExtension, targetDirName);
     }
 
     private List<Task> HandleFiles(DirectoryInfo source, string fileExtension, string targetDirName)
     {
+        if (!fileExtension.StartsWith('*'))
+        {
+            fileExtension = '*' + fileExtension;
+        }
+
         var files = source.GetFiles(fileExtension, SearchOption.AllDirectories);
         if (files.Length <= 0)
         {
@@ -214,4 +246,7 @@ internal sealed class StaticContentHandler : IStaticContentHandler
             index++;
         }
     }
+
+    [GeneratedRegex("\\s+")]
+    private static partial Regex WhitespaceRegex();
 }
