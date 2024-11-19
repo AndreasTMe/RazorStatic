@@ -80,33 +80,36 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
                 var urls     = new List<string>();
                 var linesMap = new Dictionary<int, string>();
 
-                foreach (var (lineOrFileName, isUrl, index) in lines.Where(l => l.StartsWith("@import"))
-                                                                    .Select(
-                                                                        (line, index) => 
-                                                                        {
-                                                                            // TODO: This index is incorrect. Fix this.
-                                                                            
-                                                                            var start = line.IndexOf('"');
-                                                                            start = start > -1 ? start + 1 : 0;
-
-                                                                            if (line[..start].Contains("url("))
-                                                                                return (line, true, index);
-
-                                                                            var end = line.LastIndexOf('"');
-                                                                            end = end > start ? end : line.Length - 1;
-
-                                                                            return (line[start..end], false, index);
-                                                                        }))
+                foreach (var (index, line) in lines.Index())
                 {
-                    if (isUrl)
+                    if (line.StartsWith("@import"))
                     {
-                        urls.Add(lineOrFileName);
-                        linesMap.TryAdd(index, string.Empty);
+                        var start = line.IndexOf('"');
+                        start = start > -1 ? start + 1 : 0;
+
+                        if (start > 0 && line[..start].Contains("url("))
+                        {
+                            urls.Add(line);
+                            continue;
+                        }
+
+                        var end = line.LastIndexOf('"');
+                        end = end > start ? end : line.Length - 1;
+
+                        var importText = File.ReadAllText(
+                            Path.Combine(source.FullName, line[start..end]),
+                            Encoding.UTF8);
+                        linesMap.TryAdd(index, importText);
+
                         continue;
                     }
 
-                    var importText = File.ReadAllText(Path.Combine(source.FullName, lineOrFileName), Encoding.UTF8);
-                    linesMap.TryAdd(index, importText);
+                    if (string.IsNullOrWhiteSpace(line))
+                    {
+                        continue;
+                    }
+
+                    break;
                 }
 
                 var sb = new StringBuilder();
