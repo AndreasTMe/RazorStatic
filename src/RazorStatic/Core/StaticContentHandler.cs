@@ -42,6 +42,7 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
             var targetDirName    = indexOfSeparator != 0 ? rootPath[indexOfSeparator..] : rootPath;
             targetDirName = targetDirName.StartsWith('_') ? targetDirName : "_" + targetDirName;
 
+            // TODO: It's better to have a parser for both CSS and JS files, but that's too much for now
             if (IsFileOfType(".css", extensions, entryFile))
             {
                 tasksToHandle.AddRange(HandleCssFiles(currentRoot, entryFile, targetDirName));
@@ -82,6 +83,8 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
 
                 foreach (var (index, line) in lines.Index())
                 {
+                    // TODO: What about comments, bro? Don't care for now...
+
                     if (line.StartsWith("@import"))
                     {
                         var start = line.IndexOf('"');
@@ -118,6 +121,7 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
                     sb.AppendLine(url);
                 }
 
+                // TODO: CSS obfuscation would be fun, but that's definitely gonna need a parser, indexing, etc.
                 foreach (var (index, line) in lines.Index())
                 {
                     sb.AppendLine(linesMap.GetValueOrDefault(index, line));
@@ -126,6 +130,7 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
                 var dir    = CreateDirectoryIfNotExists(targetDirName);
                 var output = Path.Combine(dir, entryFile);
 
+                // TODO: Maybe split if line is too long? Not sure if it can be a problem.
                 File.WriteAllText(output, WhitespaceRegex().Replace(sb.ToString(), " "), Encoding.UTF8);
             });
 
@@ -146,7 +151,7 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
         // Side effect import:  import "module-name";
         // ------------------------------------------------------------
 
-        // TODO: Replace later, use default behaviour for now
+        // TODO: Replace JS handling later, use default behaviour for now
         return HandleFiles(source, fileExtension, targetDirName);
     }
 
