@@ -194,6 +194,7 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         }
 
         var fileName = Path.GetFileNameWithoutExtension(fullPath).ToLowerInvariant();
+        fileName = SlugUtils.Convert(fileName);
 
         return Constants.Page.IsReserved(fileName)
             ? new FileInfo(directoryName, fileName)

@@ -19,8 +19,8 @@ internal static partial class GeneratorPipelines
             return;
 
         var pagesForFactory = new Dictionary<string, string>();
-        var pagesDirName = capture.DirectorySetup.Properties[Constants.Attributes.DirectoriesSetup.Members.Pages];
-        var contentDirName = capture.DirectorySetup.Properties[Constants.Attributes.DirectoriesSetup.Members.Content];
+        var pagesDirName    = capture.DirectorySetup.Properties[Constants.Attributes.DirectoriesSetup.Members.Pages];
+        var contentDirName  = capture.DirectorySetup.Properties[Constants.Attributes.DirectoriesSetup.Members.Content];
 
         const string pageRoute        = Constants.Attributes.CollectionDefinition.Members.PageRoute;
         const string contentDirectory = Constants.Attributes.CollectionDefinition.Members.ContentDirectory;
@@ -71,12 +71,15 @@ internal static partial class GeneratorPipelines
                       using System;
                       using System.Collections.Frozen;
                       using System.Collections.Generic;
+                      using System.IO;
                       using System.Threading.Tasks;
 
                       namespace {{Constants.RazorStaticCoreNamespace}}
                       {
                           internal sealed class {{className}} : {{Constants.Interfaces.PageCollectionDefinition.Name}}
                           {
+                              private const string YamlIndicator = "---\r\n";
+                              
                       #nullable enable
                               private static readonly FrozenSet<string> ContentFilePaths = new HashSet<string>()
                               {
@@ -96,10 +99,29 @@ internal static partial class GeneratorPipelines
                                   {
                                       var content = await _renderer.Dispatcher.InvokeAsync(async () =>
                                       {
+                                          var text = File.ReadAllText(contentFilePath)?.Trim();
+                                          string? frontmatterContent = null;
+                                          string? markdownContent = null;
+                                          if (text.StartsWith(YamlIndicator))
+                                          {
+                                              var yamlEndIndex = text.IndexOf(YamlIndicator, YamlIndicator.Length, StringComparison.InvariantCulture);
+                                              if (yamlEndIndex > YamlIndicator.Length)
+                                              {
+                                                  frontmatterContent = text[YamlIndicator.Length..yamlEndIndex].Trim();
+                                                  markdownContent = text[(yamlEndIndex + YamlIndicator.Length)..].Trim();
+                                              }
+                                          }
+                                          else
+                                          {
+                                              markdownContent = text;
+                                          }
+                                          
                                           var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
                                           {
                                               [nameof({{Constants.Abstractions.FileComponentBase.Name}}.{{Constants.Abstractions.FileComponentBase.Members.PageFilePath}})] = filePath,
-                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.ContentFilePath}})] = contentFilePath
+                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.ContentFilePath}})] = contentFilePath,
+                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.Content}})] = markdownContent,
+                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.FrontMatter}})] = frontmatterContent
                                           });
                                           var output = await _renderer.RenderComponentAsync(pageType, parameters);
                                           return output.ToHtmlString();

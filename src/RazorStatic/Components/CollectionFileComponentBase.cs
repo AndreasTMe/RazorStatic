@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components;
+using RazorStatic.Utilities;
 using System;
 using System.IO;
 
@@ -9,16 +10,22 @@ namespace RazorStatic.Components;
 /// </summary>
 public abstract class CollectionFileComponentBase : FileComponentBase
 {
-    private string _contentFileName = string.Empty;
+    private string _slug = string.Empty;
 
     [Parameter]
     public string? ContentFilePath { get; set; }
 
-    protected string? ContentFileName
+    [Parameter]
+    public string? Content { get; set; }
+
+    [Parameter]
+    public string? FrontMatter { get; set; }
+
+    protected string Slug
     {
         get
         {
-            if (string.IsNullOrWhiteSpace(_contentFileName) && !string.IsNullOrWhiteSpace(ContentFilePath))
+            if (string.IsNullOrWhiteSpace(_slug) && !string.IsNullOrWhiteSpace(ContentFilePath))
             {
                 var start = ContentFilePath.LastIndexOf(Path.DirectorySeparatorChar) + 1;
                 ArgumentOutOfRangeException.ThrowIfNegative(start);
@@ -27,10 +34,10 @@ public abstract class CollectionFileComponentBase : FileComponentBase
                 if (end <= start)
                     end = ContentFilePath.Length;
 
-                _contentFileName = ContentFilePath[start..end];
+                _slug = SlugUtils.Convert(ContentFilePath[start..end]);
             }
 
-            return _contentFileName;
+            return _slug;
         }
     }
 

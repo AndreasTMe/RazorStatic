@@ -27,6 +27,8 @@ internal static class Constants
             public static class Members
             {
                 public const string ContentFilePath = nameof(ContentFilePath);
+                public const string Content         = nameof(Content);
+                public const string FrontMatter     = nameof(FrontMatter);
             }
         }
     }

@@ -1,12 +1,10 @@
 ﻿@using RazorStatic.Components
-@using System.Text.RegularExpressions
 @using RazorStatic.ConsoleApp.Layouts
 
 @inherits CollectionFileComponentBase
 
 @{
-    var title    = new Regex("[^a-zA-Z0-9]").Replace(ContentFileName ?? string.Empty, " ").Trim();
-    var fragment = CreateRenderFragment($"<h1 style='color:red'>{title}</h1>");
+    var fragment = CreateRenderFragment($"<h1 style='color:red'>{Slug}</h1>");
 }
 
 <RootLayout Css="_css/blog.css">
