@@ -7,6 +7,7 @@ internal static class Constants
     public const string RazorStaticComponentsNamespace   = "RazorStatic.Components";
     public const string RazorStaticCoreNamespace         = "RazorStatic.Core";
     public const string RazorStaticGeneratedNamespace    = "RazorStatic.Generated";
+    public const string RazorStaticUtilitiesNamespace    = "RazorStatic.Utilities";
 
     public static class Abstractions
     {
@@ -29,6 +30,7 @@ internal static class Constants
                 public const string ContentFilePath = nameof(ContentFilePath);
                 public const string Content         = nameof(Content);
                 public const string FrontMatter     = nameof(FrontMatter);
+                public const string Slug            = nameof(Slug);
             }
         }
     }

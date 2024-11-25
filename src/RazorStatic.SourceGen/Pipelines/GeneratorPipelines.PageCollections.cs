@@ -68,6 +68,7 @@ internal static partial class GeneratorPipelines
                       using Microsoft.AspNetCore.Components.Web;
                       using {{Constants.RazorStaticAbstractionsNamespace}};
                       using {{Constants.RazorStaticComponentsNamespace}};
+                      using {{Constants.RazorStaticUtilitiesNamespace}};
                       using System;
                       using System.Collections.Frozen;
                       using System.Collections.Generic;
@@ -100,6 +101,9 @@ internal static partial class GeneratorPipelines
                                       var content = await _renderer.Dispatcher.InvokeAsync(async () =>
                                       {
                                           var text = File.ReadAllText(contentFilePath)?.Trim();
+                                          if (string.IsNullOrWhiteSpace(text))
+                                              return string.Empty;
+                                          
                                           string? frontmatterContent = null;
                                           string? markdownContent = null;
                                           if (text.StartsWith(YamlIndicator))
@@ -120,8 +124,9 @@ internal static partial class GeneratorPipelines
                                           {
                                               [nameof({{Constants.Abstractions.FileComponentBase.Name}}.{{Constants.Abstractions.FileComponentBase.Members.PageFilePath}})] = filePath,
                                               [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.ContentFilePath}})] = contentFilePath,
-                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.Content}})] = markdownContent,
-                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.FrontMatter}})] = frontmatterContent
+                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.Slug}})] = SlugUtils.Convert(Path.GetFileNameWithoutExtension(contentFilePath).ToLowerInvariant()),
+                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.FrontMatter}})] = frontmatterContent,
+                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.Content}})] = markdownContent
                                           });
                                           var output = await _renderer.RenderComponentAsync(pageType, parameters);
                                           return output.ToHtmlString();
