@@ -55,7 +55,7 @@ internal static partial class GeneratorPipelines
                   
                           public {{className}}(HtmlRenderer renderer) => _renderer = renderer;
                           
-                          public Type GetPageType(string filePath) => Types[filePath];
+                          public Type {{Constants.Interfaces.PagesStore.Members.GetPageType}}(string filePath) => Types[filePath];
                   
                           public Task<string> {{Constants.Interfaces.PagesStore.Members.RenderComponentAsync}}(string filePath) => _renderer.Dispatcher.InvokeAsync(async () =>
                           {

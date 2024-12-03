@@ -18,16 +18,21 @@ internal static partial class GeneratorPipelines
             || capture.AttributeMembers.IsDefaultOrEmpty)
             return;
 
-        var pagesForFactory = new Dictionary<string, string>();
-        var pagesDirName    = capture.DirectorySetup.Properties[Constants.Attributes.DirectoriesSetup.Members.Pages];
-        var contentDirName  = capture.DirectorySetup.Properties[Constants.Attributes.DirectoriesSetup.Members.Content];
+        var pagesForFactory  = new Dictionary<string, string>();
+        var keysForDirectory = new Dictionary<string, string>();
+        var pagesDirName     = capture.DirectorySetup.Properties[Constants.Attributes.DirectoriesSetup.Members.Pages];
+        var contentDirName   = capture.DirectorySetup.Properties[Constants.Attributes.DirectoriesSetup.Members.Content];
 
+        const string key              = Constants.Attributes.CollectionDefinition.Members.Key;
         const string pageRoute        = Constants.Attributes.CollectionDefinition.Members.PageRoute;
         const string contentDirectory = Constants.Attributes.CollectionDefinition.Members.ContentDirectory;
+        const string extension        = Constants.Attributes.CollectionDefinition.Members.Extension;
 
         foreach (var attributeInfo in capture.AttributeMembers.Where(
-                     info => info.Properties.ContainsKey(pageRoute)
-                             && info.Properties.ContainsKey(contentDirectory)))
+                     info => info.Properties.ContainsKey(key)
+                             && info.Properties.ContainsKey(pageRoute)
+                             && info.Properties.ContainsKey(contentDirectory)
+                             && info.Properties.ContainsKey(extension)))
         {
             try
             {
@@ -53,8 +58,11 @@ internal static partial class GeneratorPipelines
                 var collectionRootDir = collectionDir.Substring(
                     0,
                     collectionDir.LastIndexOf(Path.DirectorySeparatorChar));
-                var markdownFiles = Directory.GetFiles(collectionDir, "*.md", SearchOption.AllDirectories)
-                                             .Select(file => $"@\"{file}\"");
+                var contentFiles = Directory.GetFiles(
+                                                collectionDir,
+                                                attributeInfo.Properties[extension],
+                                                SearchOption.AllDirectories)
+                                            .Select(file => $"@\"{file}\"");
 
                 var routeNameNoSpecialChars = new Regex("[^a-zA-Z0-9]").Replace(routeName, "");
                 var className =
@@ -84,7 +92,7 @@ internal static partial class GeneratorPipelines
                       #nullable enable
                               private static readonly FrozenSet<string> ContentFilePaths = new HashSet<string>()
                               {
-                                  {{string.Join(",\n            ", markdownFiles)}}
+                                  {{string.Join(",\n            ", contentFiles)}}
                               }
                               .ToFrozenSet();
                               
@@ -105,19 +113,19 @@ internal static partial class GeneratorPipelines
                                               return string.Empty;
                                           
                                           string? frontmatterContent = null;
-                                          string? markdownContent = null;
+                                          string? fileContent = null;
                                           if (text.StartsWith(YamlIndicator))
                                           {
                                               var yamlEndIndex = text.IndexOf(YamlIndicator, YamlIndicator.Length, StringComparison.InvariantCulture);
                                               if (yamlEndIndex > YamlIndicator.Length)
                                               {
                                                   frontmatterContent = text[YamlIndicator.Length..yamlEndIndex].Trim();
-                                                  markdownContent = text[(yamlEndIndex + YamlIndicator.Length)..].Trim();
+                                                  fileContent = text[(yamlEndIndex + YamlIndicator.Length)..].Trim();
                                               }
                                           }
                                           else
                                           {
-                                              markdownContent = text;
+                                              fileContent = text;
                                           }
                                           
                                           var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
@@ -126,7 +134,7 @@ internal static partial class GeneratorPipelines
                                               [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.ContentFilePath}})] = contentFilePath,
                                               [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.Slug}})] = SlugUtils.Convert(Path.GetFileNameWithoutExtension(contentFilePath).ToLowerInvariant()),
                                               [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.FrontMatter}})] = frontmatterContent,
-                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.Content}})] = markdownContent
+                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.Content}})] = fileContent
                                           });
                                           var output = await _renderer.RenderComponentAsync(pageType, parameters);
                                           return output.ToHtmlString();
@@ -139,7 +147,8 @@ internal static partial class GeneratorPipelines
                       }
                       """);
 
-                pagesForFactory[pageFile] = className;
+                pagesForFactory[pageFile]                       = className;
+                keysForDirectory[attributeInfo.Properties[key]] = collectionDir;
             }
             catch (Exception)
             {
@@ -156,6 +165,7 @@ internal static partial class GeneratorPipelines
               using System.Collections.Frozen;
               using System.Collections.Generic;
               using System.Diagnostics.CodeAnalysis;
+              using System.IO;
 
               namespace {{Constants.RazorStaticCoreNamespace}}
               {
@@ -164,6 +174,7 @@ internal static partial class GeneratorPipelines
               #nullable enable
                       private readonly HtmlRenderer _renderer;
                       private readonly FrozenDictionary<string, {{Constants.Interfaces.PageCollectionDefinition.Name}}> _collections;
+                      private readonly FrozenDictionary<string, string> _directories;
                       
                       public Implementations_PageCollectionsStore(HtmlRenderer renderer)
                       {
@@ -173,11 +184,26 @@ internal static partial class GeneratorPipelines
                               {{string.Join(",\n            ", pagesForFactory.Select(kvp => $"[@\"{kvp.Key}\"] = new {kvp.Value}(renderer)"))}}
                           }
                           .ToFrozenDictionary();
+                          _directories = new Dictionary<string, string>
+                          {
+                              {{string.Join(",\n            ", keysForDirectory.Select(kvp => $"[@\"{kvp.Key}\"] = @\"{kvp.Value}\""))}}
+                          }
+                          .ToFrozenDictionary();
                       }
                       
-                      public bool {{Constants.Interfaces.PageCollectionsStore.Members.TryGetCollection}}(string key, [MaybeNullWhen(false)] out {{Constants.Interfaces.PageCollectionDefinition.Name}} collection)
+                      public bool {{Constants.Interfaces.PageCollectionsStore.Members.TryGetCollection}}(string filePath, [MaybeNullWhen(false)] out {{Constants.Interfaces.PageCollectionDefinition.Name}} collection)
                       {
-                          return _collections.TryGetValue(key, out collection);
+                          return _collections.TryGetValue(filePath, out collection);
+                      }
+                      
+                      public string[] {{Constants.Interfaces.PageCollectionsStore.Members.GetContentFileDirectories}}(string key)
+                      {
+                          if (!_directories.TryGetValue(key, out var collectionDirectory))
+                          {
+                              return [];
+                          }
+                          
+                          return Directory.GetFiles(collectionDirectory, "*.md", SearchOption.AllDirectories) ?? [];
                       }
               #nullable disable
                   }

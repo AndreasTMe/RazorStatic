@@ -7,5 +7,7 @@ namespace RazorStatic.Abstractions;
 /// </summary>
 public interface IPageCollectionsStore
 {
-    bool TryGetCollection(string key, [MaybeNullWhen(false)] out IPageCollectionDefinition collection);
+    bool TryGetCollection(string filePath, [MaybeNullWhen(false)] out IPageCollectionDefinition collection);
+    
+    string[] GetContentFileDirectories(string key);
 }

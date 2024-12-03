@@ -2,8 +2,8 @@
 
 [assembly: DirectoriesSetup(Pages = "Pages", Content = "Content")]
 
-[assembly: CollectionDefinition(PageRoute = "Blog", ContentDirectory = "Blog")]
-[assembly: CollectionDefinition(PageRoute = "Product", ContentDirectory = "Product")]
+[assembly: CollectionDefinition(Key = "blog", PageRoute = "Blog", ContentDirectory = "Blog", Extension = "*.md")]
+[assembly: CollectionDefinition(Key = "product", PageRoute = "Product", ContentDirectory = "Product")]
 
 [assembly: StaticContent(RootPath = "wwwroot/css", EntryFile = "home.css")]
 [assembly: StaticContent(RootPath = "wwwroot/css", Extensions = [".css"], EntryFile = "blog.css")]

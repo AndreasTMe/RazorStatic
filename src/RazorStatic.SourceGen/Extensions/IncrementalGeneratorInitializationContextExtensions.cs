@@ -43,9 +43,13 @@ internal static class IncrementalGeneratorInitializationContextExtensions
                           public sealed class {{Constants.Attributes.CollectionDefinition.Name}}Attribute : System.Attribute
                           {
                           #nullable disable
+                              public string {{Constants.Attributes.CollectionDefinition.Members.Key}} { get; set; }
+                              
                               public string {{Constants.Attributes.CollectionDefinition.Members.PageRoute}} { get; set; }
                           
                               public string {{Constants.Attributes.CollectionDefinition.Members.ContentDirectory}} { get; set; }
+                          
+                              public string {{Constants.Attributes.CollectionDefinition.Members.Extension}} { get; set; }
                           #nullable enable
                           }
                           """,

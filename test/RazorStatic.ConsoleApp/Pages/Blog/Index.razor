@@ -1,0 +1,13 @@
+﻿@using RazorStatic.Abstractions
+@using RazorStatic.ConsoleApp.Layouts
+
+@inject IPageCollectionsStore Store;
+
+@{
+    var blogDirs = Store.GetContentFileDirectories("blog");
+    var dirs     = blogDirs;
+}
+
+<RootLayout Css="_css/home.css">
+    <h1 class="text-6xl text-amber-400">Blog Page</h1>
+</RootLayout>

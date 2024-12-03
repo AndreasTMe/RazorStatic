@@ -82,7 +82,8 @@ internal static class Constants
 
             public static class Members
             {
-                public const string TryGetCollection = nameof(TryGetCollection);
+                public const string TryGetCollection          = nameof(TryGetCollection);
+                public const string GetContentFileDirectories = nameof(GetContentFileDirectories);
             }
         }
     }
@@ -95,8 +96,10 @@ internal static class Constants
 
             public static class Members
             {
+                public const string Key              = nameof(Key);
                 public const string PageRoute        = nameof(PageRoute);
                 public const string ContentDirectory = nameof(ContentDirectory);
+                public const string Extension        = nameof(Extension);
             }
         }
 
