@@ -43,13 +43,13 @@ internal static partial class GeneratorPipelines
               {
                   internal sealed class {{className}} : {{Constants.Interfaces.DirectoriesSetup.Name}}
                   {
-              #nullable disable
+              #nullable enable
                       public string {{Constants.Interfaces.DirectoriesSetup.Members.ProjectRoot}} => @"{{csProj.ProjectDir}}";
                       
                       public string {{Constants.Interfaces.DirectoriesSetup.Members.Pages}} => @"{{pagesDir}}";
                       
                       public string {{Constants.Interfaces.DirectoriesSetup.Members.Content}} => @"{{contentDir}}";
-              #nullable enable
+              #nullable disable
                   }
               }
               """);

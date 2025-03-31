@@ -97,7 +97,7 @@ internal static partial class GeneratorPipelines
                       {
                           internal sealed class {{className}} : {{Constants.Interfaces.PageCollectionDefinition.Name}}
                           {
-                      #nullable disable
+                      #nullable enable
                               private const string YamlIndicator = "---\r\n";
                               
                               private static readonly FrozenDictionary<string, string> ContentFilePaths = new HashSet<string>()
@@ -153,7 +153,7 @@ internal static partial class GeneratorPipelines
                                       yield return new RenderedResult(contentFilePath, content);
                                   }
                               }
-                      #nullable enable
+                      #nullable disable
                           }
                       }
                       """);
@@ -186,7 +186,7 @@ internal static partial class GeneratorPipelines
               {
                   internal sealed class Implementations_{{Constants.Interfaces.PageCollectionsStore.Name}} : {{Constants.Interfaces.PageCollectionsStore.Name}}
                   {
-              #nullable disable
+              #nullable enable
                       private readonly HtmlRenderer _renderer;
                       private readonly FrozenDictionary<string, {{Constants.Interfaces.PageCollectionDefinition.Name}}> _collections;
                       private readonly FrozenDictionary<string, string> _directories;
@@ -210,7 +210,7 @@ internal static partial class GeneratorPipelines
                       {
                           return _collections.TryGetValue(filePath, out collection);
                       }
-              #nullable enable
+              #nullable disable
                   }
               }
               """);
@@ -227,7 +227,6 @@ internal static partial class GeneratorPipelines
                   using System;
                   using System.Collections.Frozen;
                   using System.Collections.Generic;
-                  using System;
                   using System.IO;
                   using System.Linq;
 
@@ -235,7 +234,7 @@ internal static partial class GeneratorPipelines
                   {
                       public static class {{pageKey}}Collection
                       {
-                  #nullable disable
+                  #nullable enable
                           private static Lazy<FrozenDictionary<string, string>> _all = new Lazy<FrozenDictionary<string, string>>(() =>
                           {
                               return new HashSet<string>()
@@ -247,7 +246,7 @@ internal static partial class GeneratorPipelines
                           });
                           
                           public static FrozenDictionary<string, string> All => _all.Value;
-                  #nullable enable
+                  #nullable disable
                       }
                   }
                   """);

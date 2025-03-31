@@ -56,7 +56,7 @@ internal static partial class GeneratorPipelines
               {
                   internal sealed class {{className}} : {{Constants.Interfaces.DirectoriesSetupForStaticContent.Name}}
                   {
-              #nullable disable
+              #nullable enable
                       private readonly FrozenSet<System.ValueTuple<string, string[], string>> _captures = new HashSet<ValueTuple<string, string[], string>>
                       {
                           {{string.Join(",\n            ", captures)}}
@@ -65,7 +65,7 @@ internal static partial class GeneratorPipelines
                       public IEnumerator<ValueTuple<string, string[], string>> GetEnumerator() => _captures.GetEnumerator();
                       
                       IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-              #nullable enable
+              #nullable disable
                   }
               }
               """);

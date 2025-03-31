@@ -44,7 +44,7 @@ internal static partial class GeneratorPipelines
                   {
                       internal sealed class {{className}} : {{Constants.Interfaces.PagesStore.Name}}
                       {
-                  #nullable disable
+                  #nullable enable
                           private static readonly FrozenDictionary<string, Type> Types = new Dictionary<string, Type>()
                           {
                               {{string.Join(",\n            ", typeMappings)}}
@@ -70,7 +70,7 @@ internal static partial class GeneratorPipelines
                               var output = await _renderer.RenderComponentAsync(type, parameters);
                               return output.ToHtmlString();
                           });
-                  #nullable enable
+                  #nullable disable
                       }
                   }
                   """);
