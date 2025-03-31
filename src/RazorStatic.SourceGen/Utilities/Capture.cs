@@ -9,10 +9,11 @@ internal record Capture
     public AttributeMemberData                 DirectorySetup   { get; }
     public ImmutableArray<AttributeMemberData> AttributeMembers { get; }
 
-    public Capture(CsProjProperties properties,
-                   string? assemblyName = default,
-                   AttributeMemberData directorySetup = default,
-                   ImmutableArray<AttributeMemberData> attributeMembers = default)
+    public Capture(
+        CsProjProperties properties,
+        string? assemblyName = default,
+        AttributeMemberData directorySetup = default,
+        ImmutableArray<AttributeMemberData> attributeMembers = default)
     {
         Properties       = properties;
         AssemblyName     = !string.IsNullOrWhiteSpace(assemblyName) ? assemblyName! : "";

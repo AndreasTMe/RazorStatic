@@ -28,29 +28,29 @@ internal class RazorStaticGenerator : IIncrementalGenerator
             GeneratorPipelines.ExecuteDirectoriesSetupForStaticContentPipeline);
 
         var pagesStorePipeline = context.CompilationProvider
-                                        .Select(static (compilation, _) => compilation.AssemblyName)
-                                        .Combine(csProjPipeline)
-                                        .Combine(directoriesSetupPipeline.Collect())
-                                        .Select(
-                                            static (combine, _) => new Capture(
-                                                combine.Left.Right,
-                                                combine.Left.Left,
-                                                combine.Right.IsDefaultOrEmpty
-                                                || combine.Right[0].MemberData.IsDefaultOrEmpty
-                                                    ? default
-                                                    : combine.Right[0].MemberData[0]));
+            .Select(static (compilation, _) => compilation.AssemblyName)
+            .Combine(csProjPipeline)
+            .Combine(directoriesSetupPipeline.Collect())
+            .Select(
+                static (combine, _) => new Capture(
+                    combine.Left.Right,
+                    combine.Left.Left,
+                    combine.Right.IsDefaultOrEmpty
+                    || combine.Right[0].MemberData.IsDefaultOrEmpty
+                        ? default
+                        : combine.Right[0].MemberData[0]));
         context.RegisterSourceOutput(pagesStorePipeline, GeneratorPipelines.ExecutePagesStorePipeline);
 
         var collectionDefinitionPipeline = context.GetSyntaxProvider(Constants.Attributes.CollectionDefinition.Name);
         var pageCollectionsPipeline = pagesStorePipeline.Combine(collectionDefinitionPipeline.Collect())
-                                                        .Select(
-                                                            static (combine, _) => new Capture(
-                                                                combine.Left.Properties,
-                                                                combine.Left.AssemblyName,
-                                                                combine.Left.DirectorySetup,
-                                                                combine.Right.IsDefaultOrEmpty
-                                                                    ? default
-                                                                    : combine.Right[0].MemberData));
+            .Select(
+                static (combine, _) => new Capture(
+                    combine.Left.Properties,
+                    combine.Left.AssemblyName,
+                    combine.Left.DirectorySetup,
+                    combine.Right.IsDefaultOrEmpty
+                        ? default
+                        : combine.Right[0].MemberData));
         context.RegisterSourceOutput(pageCollectionsPipeline, GeneratorPipelines.ExecutePageCollectionsPipeline);
     }
 }

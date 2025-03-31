@@ -28,6 +28,8 @@ internal static partial class GeneratorPipelines
         const string contentDirectory = Constants.Attributes.CollectionDefinition.Members.ContentDirectory;
         const string extension        = Constants.Attributes.CollectionDefinition.Members.Extension;
 
+        var routesToFilesMap = new Dictionary<string, List<string>>();
+
         foreach (var attributeInfo in capture.AttributeMembers.Where(
                      info => info.Properties.ContainsKey(key)
                              && info.Properties.ContainsKey(pageRoute)
@@ -39,14 +41,14 @@ internal static partial class GeneratorPipelines
                 var routeName = attributeInfo.Properties[pageRoute];
                 var routeDir  = Path.Combine(capture.Properties.ProjectDir, pagesDirName, routeName);
                 var pageFile = Directory.GetFiles(routeDir, "*.razor", SearchOption.AllDirectories)
-                                        .FirstOrDefault(
-                                            file =>
-                                            {
-                                                var split             = file.Split(Path.DirectorySeparatorChar);
-                                                var fileWithExtension = split[split.Length - 1];
-                                                return fileWithExtension.StartsWith("[")
-                                                       && fileWithExtension.EndsWith("].razor");
-                                            });
+                    .FirstOrDefault(
+                        file =>
+                        {
+                            var split             = file.Split(Path.DirectorySeparatorChar);
+                            var fileWithExtension = split[split.Length - 1];
+                            return fileWithExtension.StartsWith("[")
+                                   && fileWithExtension.EndsWith("].razor");
+                        });
 
                 if (string.IsNullOrWhiteSpace(pageFile))
                     continue;
@@ -59,12 +61,19 @@ internal static partial class GeneratorPipelines
                     0,
                     collectionDir.LastIndexOf(Path.DirectorySeparatorChar));
                 var contentFiles = Directory.GetFiles(
-                                                collectionDir,
-                                                attributeInfo.Properties[extension],
-                                                SearchOption.AllDirectories)
-                                            .Select(file => $"@\"{file}\"");
+                        collectionDir,
+                        attributeInfo.Properties[extension],
+                        SearchOption.AllDirectories)
+                    .Select(file => $"@\"{file}\"")
+                    .ToList();
 
                 var routeNameNoSpecialChars = new Regex("[^a-zA-Z0-9]").Replace(routeName, "");
+                routeNameNoSpecialChars = string.Concat(
+                    routeNameNoSpecialChars[0].ToString().ToUpper(),
+                    routeNameNoSpecialChars.Substring(1));
+
+                routesToFilesMap[routeNameNoSpecialChars] = contentFiles;
+
                 var className =
                     $"Implementations_{Constants.Interfaces.PageCollectionDefinition.Name.Replace("Page", routeNameNoSpecialChars)}";
 
@@ -80,6 +89,7 @@ internal static partial class GeneratorPipelines
                       using System;
                       using System.Collections.Frozen;
                       using System.Collections.Generic;
+                      using System.Linq;
                       using System.IO;
                       using System.Threading.Tasks;
 
@@ -87,14 +97,15 @@ internal static partial class GeneratorPipelines
                       {
                           internal sealed class {{className}} : {{Constants.Interfaces.PageCollectionDefinition.Name}}
                           {
+                      #nullable disable
                               private const string YamlIndicator = "---\r\n";
                               
-                      #nullable enable
-                              private static readonly FrozenSet<string> ContentFilePaths = new HashSet<string>()
+                              private static readonly FrozenDictionary<string, string> ContentFilePaths = new HashSet<string>()
                               {
                                   {{string.Join(",\n            ", contentFiles)}}
                               }
-                              .ToFrozenSet();
+                              .Select(contentFile => (SlugUtils.Convert(Path.GetFileNameWithoutExtension(contentFile).ToLowerInvariant()), contentFile))
+                              .ToFrozenDictionary(kvp => kvp.Item1, kvp => kvp.Item2);
                               
                               private readonly HtmlRenderer _renderer;
                               
@@ -104,7 +115,7 @@ internal static partial class GeneratorPipelines
                       
                               public async IAsyncEnumerable<RenderedResult> {{Constants.Interfaces.PageCollectionDefinition.Members.RenderComponentsAsync}}(string filePath, Type pageType)
                               {
-                                  foreach (var contentFilePath in ContentFilePaths)
+                                  foreach (var (slug, contentFilePath) in ContentFilePaths)
                                   {
                                       var content = await _renderer.Dispatcher.InvokeAsync(async () =>
                                       {
@@ -132,7 +143,7 @@ internal static partial class GeneratorPipelines
                                           {
                                               [nameof({{Constants.Abstractions.FileComponentBase.Name}}.{{Constants.Abstractions.FileComponentBase.Members.PageFilePath}})] = filePath,
                                               [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.ContentFilePath}})] = contentFilePath,
-                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.Slug}})] = SlugUtils.Convert(Path.GetFileNameWithoutExtension(contentFilePath).ToLowerInvariant()),
+                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.Slug}})] = slug,
                                               [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.FrontMatter}})] = frontmatterContent,
                                               [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.Content}})] = fileContent
                                           });
@@ -142,7 +153,7 @@ internal static partial class GeneratorPipelines
                                       yield return new RenderedResult(contentFilePath, content);
                                   }
                               }
-                      #nullable disable
+                      #nullable enable
                           }
                       }
                       """);
@@ -157,7 +168,7 @@ internal static partial class GeneratorPipelines
         }
 
         context.AddSource(
-            "Implementations_PageCollectionsStore.generated.cs",
+            $"Implementations_{Constants.Interfaces.PageCollectionsStore.Name}.generated.cs",
             $$"""
               // <auto-generated/>
               using Microsoft.AspNetCore.Components.Web;
@@ -167,16 +178,20 @@ internal static partial class GeneratorPipelines
               using System.Diagnostics.CodeAnalysis;
               using System.IO;
 
+              using {{Constants.RazorStaticUtilitiesNamespace}};
+              using System;
+              using System.Linq;
+
               namespace {{Constants.RazorStaticCoreNamespace}}
               {
-                  internal sealed class Implementations_PageCollectionsStore : {{Constants.Interfaces.PageCollectionsStore.Name}}
+                  internal sealed class Implementations_{{Constants.Interfaces.PageCollectionsStore.Name}} : {{Constants.Interfaces.PageCollectionsStore.Name}}
                   {
-              #nullable enable
+              #nullable disable
                       private readonly HtmlRenderer _renderer;
                       private readonly FrozenDictionary<string, {{Constants.Interfaces.PageCollectionDefinition.Name}}> _collections;
                       private readonly FrozenDictionary<string, string> _directories;
                       
-                      public Implementations_PageCollectionsStore(HtmlRenderer renderer)
+                      public Implementations_{{Constants.Interfaces.PageCollectionsStore.Name}}(HtmlRenderer renderer)
                       {
                           _renderer    = renderer;
                           _collections = new Dictionary<string, {{Constants.Interfaces.PageCollectionDefinition.Name}}>
@@ -195,19 +210,47 @@ internal static partial class GeneratorPipelines
                       {
                           return _collections.TryGetValue(filePath, out collection);
                       }
-                      
-                      public string[] {{Constants.Interfaces.PageCollectionsStore.Members.GetContentFileDirectories}}(string key)
-                      {
-                          if (!_directories.TryGetValue(key, out var collectionDirectory))
-                          {
-                              return [];
-                          }
-                          
-                          return Directory.GetFiles(collectionDirectory, "*.md", SearchOption.AllDirectories) ?? [];
-                      }
-              #nullable disable
+              #nullable enable
                   }
               }
               """);
+
+        foreach (var kvp in routesToFilesMap)
+        {
+            var pageKey = string.Concat(kvp.Key[0].ToString().ToUpper(), kvp.Key.Substring(1));
+
+            context.AddSource(
+                $"Helpers_{pageKey}Collection.generated.cs",
+                $$"""
+                  // <auto-generated/>
+                  using {{Constants.RazorStaticUtilitiesNamespace}};
+                  using System;
+                  using System.Collections.Frozen;
+                  using System.Collections.Generic;
+                  using System;
+                  using System.IO;
+                  using System.Linq;
+
+                  namespace {{Constants.RazorStaticCoreNamespace}}
+                  {
+                      public static class {{pageKey}}Collection
+                      {
+                  #nullable disable
+                          private static Lazy<FrozenDictionary<string, string>> _all = new Lazy<FrozenDictionary<string, string>>(() =>
+                          {
+                              return new HashSet<string>()
+                              {
+                                  {{string.Join(",\n            ", kvp.Value)}}
+                              }
+                              .Select(contentFile => (SlugUtils.Convert(Path.GetFileNameWithoutExtension(contentFile).ToLowerInvariant()), contentFile))
+                              .ToFrozenDictionary(kvp => kvp.Item1, kvp => kvp.Item2);
+                          });
+                          
+                          public static FrozenDictionary<string, string> All => _all.Value;
+                  #nullable enable
+                      }
+                  }
+                  """);
+        }
     }
 }

@@ -4,6 +4,7 @@
         <TargetFramework>net9.0</TargetFramework>
         <LangVersion>latest</LangVersion>
         <Nullable>enable</Nullable>
+        <WarningsAsErrors>true</WarningsAsErrors>
 
         <AssemblyName>RazorStatic</AssemblyName>
         <RootNamespace>$(AssemblyName)</RootNamespace>
@@ -14,9 +15,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.0"/>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0"/>
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0"/>
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.3"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.3"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.3"/>
     </ItemGroup>
 
 </Project>

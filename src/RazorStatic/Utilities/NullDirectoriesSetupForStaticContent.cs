@@ -9,7 +9,7 @@ internal sealed class NullDirectoriesSetupForStaticContent : IDirectoriesSetupFo
 {
     public IEnumerator<ValueTuple<string, string[], string>> GetEnumerator() =>
         (IEnumerator<ValueTuple<string, string[], string>>)Array.Empty<ValueTuple<string, string[], string>>()
-                                                                .GetEnumerator();
+            .GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

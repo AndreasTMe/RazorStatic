@@ -45,14 +45,14 @@ public sealed class RazorStaticConfigurationOptions
             return;
 
         var argsDictionary = args.Select(
-                                     arg =>
-                                     {
-                                         var kvp = arg.Split('=');
-                                         return new KeyValuePair<string, string?>(
-                                             kvp[0],
-                                             kvp.Length == 2 ? kvp[1] : null);
-                                     })
-                                 .ToFrozenDictionary();
+                arg =>
+                {
+                    var kvp = arg.Split('=');
+                    return new KeyValuePair<string, string?>(
+                        kvp[0],
+                        kvp.Length == 2 ? kvp[1] : null);
+                })
+            .ToFrozenDictionary();
 
         ShouldServe = argsDictionary.TryGetValue("--serve", out var value) && value is null or "true";
     }

@@ -26,13 +26,14 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
 
     private readonly string _rootPath;
 
-    public RazorStaticRenderer(HtmlRenderer htmlRenderer,
-                               IDirectoriesSetup directoriesSetup,
-                               IPagesStore pagesStore,
-                               IPageCollectionsStore pageCollectionsStore,
-                               IFileWriter fileWriter,
-                               IOptions<RazorStaticConfigurationOptions> options,
-                               ILogger<RazorStaticRenderer> logger)
+    public RazorStaticRenderer(
+        HtmlRenderer htmlRenderer,
+        IDirectoriesSetup directoriesSetup,
+        IPagesStore pagesStore,
+        IPageCollectionsStore pageCollectionsStore,
+        IFileWriter fileWriter,
+        IOptions<RazorStaticConfigurationOptions> options,
+        ILogger<RazorStaticRenderer> logger)
     {
         _htmlRenderer         = htmlRenderer;
         _directoriesSetup     = directoriesSetup;
@@ -58,17 +59,17 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         }
 
         var razorFiles = Directory.GetFiles(_directoriesSetup.Pages, "*.razor", SearchOption.AllDirectories)
-                                  .GroupBy(file => file[..file.LastIndexOf(Path.DirectorySeparatorChar)])
-                                  .Select(
-                                      grouping =>
-                                      {
-                                          var path = grouping.Key.Replace(_directoriesSetup.Pages, string.Empty);
-                                          return new KeyValuePair<NodePath, ImmutableArray<string>>(
-                                              new NodePath(path, path.Count(p => p == Path.DirectorySeparatorChar)),
-                                              [..grouping]);
-                                      })
-                                  .OrderBy(kvp => kvp.Key.Path)
-                                  .ToImmutableArray();
+            .GroupBy(file => file[..file.LastIndexOf(Path.DirectorySeparatorChar)])
+            .Select(
+                grouping =>
+                {
+                    var path = grouping.Key.Replace(_directoriesSetup.Pages, string.Empty);
+                    return new KeyValuePair<NodePath, ImmutableArray<string>>(
+                        new NodePath(path, path.Count(p => p == Path.DirectorySeparatorChar)),
+                        [..grouping]);
+                })
+            .OrderBy(kvp => kvp.Key.Path)
+            .ToImmutableArray();
 
         if (razorFiles.IsEmpty)
         {
@@ -92,7 +93,7 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         for (var i = 0; i < tasks.Count; i += Constants.BatchSize)
         {
             await Task.WhenAll(tasks.Skip(i).Take(Constants.BatchSize))
-                      .ConfigureAwait(false);
+                .ConfigureAwait(false);
         }
         sw.Stop();
 
@@ -101,9 +102,10 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
 
     public ValueTask DisposeAsync() => _htmlRenderer.DisposeAsync();
 
-    private void BuildPageTreeRecursive(Node root,
-                                        ImmutableArray<KeyValuePair<NodePath, ImmutableArray<string>>> razorFiles,
-                                        int index)
+    private void BuildPageTreeRecursive(
+        Node root,
+        ImmutableArray<KeyValuePair<NodePath, ImmutableArray<string>>> razorFiles,
+        int index)
     {
         var directory = razorFiles[index];
 
@@ -152,7 +154,7 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
 
                     var fileInfo = GenerateFileInfo(fileName, collection.RootPath, true);
                     await _fileWriter.WriteAsync(pageHtml, fileInfo.Name, _rootPath + fileInfo.Directory)
-                                     .ConfigureAwait(false);
+                        .ConfigureAwait(false);
 
                     _logger.LogInformation(
                         "Rendered '{Page}.html' page successfully.",
@@ -177,8 +179,8 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
     private static FileInfo GenerateFileInfo(string fullPath, string rootPath, bool isCollection = false)
     {
         var directoryName = fullPath[..fullPath.LastIndexOf(Path.DirectorySeparatorChar)]
-                            .Replace(rootPath, "")
-                            .ToLowerInvariant();
+            .Replace(rootPath, "")
+            .ToLowerInvariant();
         if (!directoryName.StartsWith(Path.DirectorySeparatorChar))
             directoryName = Path.DirectorySeparatorChar + directoryName;
         if (!directoryName.EndsWith(Path.DirectorySeparatorChar))

@@ -7,8 +7,9 @@ namespace RazorStatic.SourceGen.Pipelines;
 
 internal static partial class GeneratorPipelines
 {
-    public static void ExecuteDirectoriesSetupPipeline(SourceProductionContext context,
-                                                       (CsProjProperties, ImmutableArray<AttributeMembers>) source)
+    public static void ExecuteDirectoriesSetupPipeline(
+        SourceProductionContext context,
+        (CsProjProperties, ImmutableArray<AttributeMembers>) source)
     {
         var (csProj, attributes) = source;
 
@@ -42,13 +43,13 @@ internal static partial class GeneratorPipelines
               {
                   internal sealed class {{className}} : {{Constants.Interfaces.DirectoriesSetup.Name}}
                   {
-              #nullable enable
+              #nullable disable
                       public string {{Constants.Interfaces.DirectoriesSetup.Members.ProjectRoot}} => @"{{csProj.ProjectDir}}";
                       
                       public string {{Constants.Interfaces.DirectoriesSetup.Members.Pages}} => @"{{pagesDir}}";
                       
                       public string {{Constants.Interfaces.DirectoriesSetup.Members.Content}} => @"{{contentDir}}";
-              #nullable disable
+              #nullable enable
                   }
               }
               """);

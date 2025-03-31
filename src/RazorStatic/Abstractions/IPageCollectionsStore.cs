@@ -8,6 +8,4 @@ namespace RazorStatic.Abstractions;
 public interface IPageCollectionsStore
 {
     bool TryGetCollection(string filePath, [MaybeNullWhen(false)] out IPageCollectionDefinition collection);
-    
-    string[] GetContentFileDirectories(string key);
 }

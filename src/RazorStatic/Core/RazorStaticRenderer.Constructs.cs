@@ -11,11 +11,11 @@ internal sealed partial class RazorStaticRenderer
 
     private class Node
     {
-        private readonly List<Leaf> _leaves  = [];
-        private readonly List<Node> _nodes   = [];
+        private readonly List<Leaf> _leaves = [];
+        private readonly List<Node> _nodes  = [];
 
-        public IReadOnlyList<Leaf> Leaves  => _leaves;
-        public IReadOnlyList<Node> Nodes   => _nodes;
+        public IReadOnlyList<Leaf> Leaves => _leaves;
+        public IReadOnlyList<Node> Nodes  => _nodes;
 
         public void AddNode(Node node) => _nodes.Add(node);
 

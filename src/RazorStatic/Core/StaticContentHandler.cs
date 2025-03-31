@@ -18,9 +18,10 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
     private readonly IDirectoriesSetupForStaticContent         _directoriesStaticContent;
     private readonly IOptions<RazorStaticConfigurationOptions> _options;
 
-    public StaticContentHandler(IDirectoriesSetup directories,
-                                IDirectoriesSetupForStaticContent directoriesStaticContent,
-                                IOptions<RazorStaticConfigurationOptions> options)
+    public StaticContentHandler(
+        IDirectoriesSetup directories,
+        IDirectoriesSetupForStaticContent directoriesStaticContent,
+        IOptions<RazorStaticConfigurationOptions> options)
     {
         _directories              = directories;
         _directoriesStaticContent = directoriesStaticContent;
@@ -63,7 +64,7 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
             for (var i = 0; i < tasksToHandle.Count; i += Constants.BatchSize)
             {
                 await Task.WhenAll(tasksToHandle.Skip(i).Take(Constants.BatchSize))
-                          .ConfigureAwait(false);
+                    .ConfigureAwait(false);
             }
         }
     }
@@ -174,27 +175,27 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
         var isNullOrWhiteSpaceDir = string.IsNullOrWhiteSpace(commonDirectory);
 
         return files.Select(
-                        file => Task.Run(
-                            () =>
+                file => Task.Run(
+                    () =>
+                    {
+                        var actualDir = dir;
+                        if (!isNullOrWhiteSpaceDir)
+                        {
+                            var subDir = file.DirectoryName
+                                             ?.Replace(commonDirectory, string.Empty)
+                                             .TrimStart(Path.DirectorySeparatorChar)
+                                         ?? string.Empty;
+
+                            if (!string.IsNullOrWhiteSpace(subDir))
                             {
-                                var actualDir = dir;
-                                if (!isNullOrWhiteSpaceDir)
-                                {
-                                    var subDir = file.DirectoryName
-                                                     ?.Replace(commonDirectory, string.Empty)
-                                                     .TrimStart(Path.DirectorySeparatorChar)
-                                                 ?? string.Empty;
+                                actualDir = Path.Combine(dir, subDir);
+                                Directory.CreateDirectory(actualDir);
+                            }
+                        }
 
-                                    if (!string.IsNullOrWhiteSpace(subDir))
-                                    {
-                                        actualDir = Path.Combine(dir, subDir);
-                                        Directory.CreateDirectory(actualDir);
-                                    }
-                                }
-
-                                file.CopyTo(Path.Combine(actualDir, file.Name), true);
-                            }))
-                    .ToList();
+                        file.CopyTo(Path.Combine(actualDir, file.Name), true);
+                    }))
+            .ToList();
     }
 
     private string CreateDirectoryIfNotExists(string subDir)
@@ -219,9 +220,9 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
     private static string GetCommonDirectory(string sourceDirectory, FileInfo[] files)
     {
         var directories = files.Select(f => f.DirectoryName?.Replace(sourceDirectory, string.Empty))
-                               .Where(n => n is not null)
-                               .Select(n => n!.Split(Path.DirectorySeparatorChar))
-                               .ToArray();
+            .Where(n => n is not null)
+            .Select(n => n!.Split(Path.DirectorySeparatorChar))
+            .ToArray();
 
         if (directories.Length == 0 || directories[0].Length == 0)
         {

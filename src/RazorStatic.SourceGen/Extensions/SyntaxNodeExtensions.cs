@@ -14,14 +14,15 @@ internal static class SyntaxNodeExtensions
         node is CompilationUnitSyntax { AttributeLists.Count: > 0 } cux
         && cux.AttributeLists.SelectMany(l => l.Attributes).Any(a => a.Name.ToString() == name);
 
-    public static AttributeMembers GetAttributeMembers(this SyntaxNode node,
-                                                       SemanticModel semanticModel,
-                                                       string attributeName)
+    public static AttributeMembers GetAttributeMembers(
+        this SyntaxNode node,
+        SemanticModel semanticModel,
+        string attributeName)
     {
         var attributeSyntaxes = ((CompilationUnitSyntax)node)
-                                .AttributeLists
-                                .SelectMany(a => a.Attributes)
-                                .Where(a => a.Name.ToString() == attributeName);
+            .AttributeLists
+            .SelectMany(a => a.Attributes)
+            .Where(a => a.Name.ToString() == attributeName);
 
         var members = new List<AttributeMemberData>();
         foreach (var attributeSyntax in attributeSyntaxes)

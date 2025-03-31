@@ -1,10 +1,8 @@
-﻿@using RazorStatic.Abstractions
-@using RazorStatic.ConsoleApp.Layouts
-
-@inject IPageCollectionsStore Store;
+﻿@using RazorStatic.ConsoleApp.Layouts
+@using RazorStatic.Core
 
 @{
-    var blogDirs = Store.GetContentFileDirectories("blog");
+    var blogDirs = BlogCollection.All;
     var dirs     = blogDirs;
 }
 

@@ -24,8 +24,9 @@ internal sealed class RazorStaticHostedService : IHostedService
     private readonly SemaphoreSlim _semaphore;
     private readonly string        _sourcePath;
 
-    public RazorStaticHostedService(ILogger<RazorStaticHostedService> logger,
-                                    IOptions<RazorStaticConfigurationOptions> options)
+    public RazorStaticHostedService(
+        ILogger<RazorStaticHostedService> logger,
+        IOptions<RazorStaticConfigurationOptions> options)
     {
         _logger             = logger;
         _options            = options.Value;
@@ -64,7 +65,7 @@ internal sealed class RazorStaticHostedService : IHostedService
                         {
                             var contextTask = _server.GetContextAsync();
                             var completedTask = await Task.WhenAny(contextTask, Task.Delay(-1, token))
-                                                          .ConfigureAwait(false);
+                                .ConfigureAwait(false);
 
                             if (completedTask != contextTask) continue;
 
@@ -155,12 +156,12 @@ internal sealed class RazorStaticHostedService : IHostedService
             if (File.Exists(filePath))
             {
                 var fileContent = await File.ReadAllBytesAsync(filePath, cancellationToken)
-                                            .ConfigureAwait(false);
+                    .ConfigureAwait(false);
                 context.Response.ContentType     = GetContentType(filePath);
                 context.Response.ContentLength64 = fileContent.Length;
                 await context.Response.OutputStream
-                             .WriteAsync(fileContent, cancellationToken)
-                             .ConfigureAwait(false);
+                    .WriteAsync(fileContent, cancellationToken)
+                    .ConfigureAwait(false);
             }
             else
             {
@@ -169,19 +170,19 @@ internal sealed class RazorStaticHostedService : IHostedService
                 if (File.Exists(_404FilePath))
                 {
                     var fileContent = await File.ReadAllBytesAsync(_404FilePath, cancellationToken)
-                                                .ConfigureAwait(false);
+                        .ConfigureAwait(false);
                     context.Response.ContentType     = GetContentType(_404FilePath);
                     context.Response.ContentLength64 = fileContent.Length;
                     await context.Response.OutputStream
-                                 .WriteAsync(fileContent, cancellationToken)
-                                 .ConfigureAwait(false);
+                        .WriteAsync(fileContent, cancellationToken)
+                        .ConfigureAwait(false);
                 }
                 else
                 {
                     var notFoundMessage = "404 - File Not Found"u8.ToArray();
                     await context.Response.OutputStream
-                                 .WriteAsync(notFoundMessage, cancellationToken)
-                                 .ConfigureAwait(false);
+                        .WriteAsync(notFoundMessage, cancellationToken)
+                        .ConfigureAwait(false);
                 }
             }
         }
@@ -196,19 +197,19 @@ internal sealed class RazorStaticHostedService : IHostedService
             if (File.Exists(_500FilePath))
             {
                 var fileContent = await File.ReadAllBytesAsync(_500FilePath, cancellationToken)
-                                            .ConfigureAwait(false);
+                    .ConfigureAwait(false);
                 context.Response.ContentType     = GetContentType(_500FilePath);
                 context.Response.ContentLength64 = fileContent.Length;
                 await context.Response.OutputStream
-                             .WriteAsync(fileContent, cancellationToken)
-                             .ConfigureAwait(false);
+                    .WriteAsync(fileContent, cancellationToken)
+                    .ConfigureAwait(false);
             }
             else
             {
                 var errorMessage = Encoding.UTF8.GetBytes($"500 - Internal Server Error: {ex.Message}");
                 await context.Response.OutputStream
-                             .WriteAsync(errorMessage, cancellationToken)
-                             .ConfigureAwait(false);
+                    .WriteAsync(errorMessage, cancellationToken)
+                    .ConfigureAwait(false);
             }
         }
         finally

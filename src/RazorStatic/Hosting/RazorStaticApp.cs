@@ -27,8 +27,9 @@ public static class RazorStaticApp
     public static IRazorStaticAppHostBuilder CreateBuilder(Action<RazorStaticConfigurationOptions>? configure) =>
         CreateBuilder(null, configure);
 
-    public static IRazorStaticAppHostBuilder CreateBuilder(string[]? args,
-                                                           Action<RazorStaticConfigurationOptions>? configure)
+    public static IRazorStaticAppHostBuilder CreateBuilder(
+        string[]? args,
+        Action<RazorStaticConfigurationOptions>? configure)
     {
         var builder = Host.CreateDefaultBuilder(args);
 
@@ -40,19 +41,19 @@ public static class RazorStaticApp
                     provider => new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>()));
 
                 services.AddOptions<RazorStaticConfigurationOptions>()
-                        .Configure(
-                            options =>
-                            {
-                                configure?.Invoke(options);
+                    .Configure(
+                        options =>
+                        {
+                            configure?.Invoke(options);
 
-                                options.AddCommandLineArgs(args);
-                                options.Evaluate();
-                            });
+                            options.AddCommandLineArgs(args);
+                            options.Evaluate();
+                        });
 
                 var assembliesTypes = Assembly.GetEntryAssembly()
-                                              ?.GetTypes()
-                                              .Where(type => !type.IsInterface)
-                                              .ToList()
+                                          ?.GetTypes()
+                                          .Where(type => type is { IsInterface: false, IsAbstract: false })
+                                          .ToList()
                                       ?? [];
 
                 services.AddSingletonOrNull<IDirectoriesSetup, NullDirectoriesSetup>(assembliesTypes);
@@ -66,8 +67,8 @@ public static class RazorStaticApp
                 services.AddTransient<IRazorStaticRenderer, RazorStaticRenderer>();
 
                 var options = services.BuildServiceProvider()
-                                      .GetRequiredService<IOptions<RazorStaticConfigurationOptions>>()
-                                      .Value;
+                    .GetRequiredService<IOptions<RazorStaticConfigurationOptions>>()
+                    .Value;
 
                 if (options.ShouldServe)
                     services.AddHostedService<RazorStaticHostedService>();
@@ -75,8 +76,9 @@ public static class RazorStaticApp
         return new RazorStaticAppHostBuilder(builder);
     }
 
-    private static void AddSingletonOrNull<TService, TNullImplementation>(this IServiceCollection services,
-                                                                          List<Type> types)
+    private static void AddSingletonOrNull<TService, TNullImplementation>(
+        this IServiceCollection services,
+        List<Type> types)
         where TService : class
         where TNullImplementation : TService, new()
     {

@@ -2,7 +2,7 @@
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
-    
+
     [Parameter]
     public string? Css { get; set; }
 
@@ -11,19 +11,19 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <base href="/"/>
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <base href="/"/>
 
-    <title>My Awesome Site</title>
-    
-    <link rel="stylesheet" href="@Css">
-</head>
+        <title>My Awesome Site</title>
 
-<body>
-@ChildContent
-</body>
+        <link rel="stylesheet" href="@Css">
+    </head>
 
-<script type="module" src="_js/script.js"></script>
+    <body>
+        @ChildContent
+    </body>
+
+    <script type="module" src="_js/script.js"></script>
 </html>

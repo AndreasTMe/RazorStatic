@@ -9,8 +9,9 @@ namespace RazorStatic.SourceGen.Pipelines;
 internal static partial class GeneratorPipelines
 {
     public static void
-        ExecuteDirectoriesSetupForStaticContentPipeline(SourceProductionContext context,
-                                                        (CsProjProperties, ImmutableArray<AttributeMembers>) source)
+        ExecuteDirectoriesSetupForStaticContentPipeline(
+            SourceProductionContext context,
+            (CsProjProperties, ImmutableArray<AttributeMembers>) source)
     {
         var (csProj, attributes) = source;
 
@@ -36,7 +37,7 @@ internal static partial class GeneratorPipelines
                 out var entryFile);
 
             captures.Add(
-                $"new(@\"{rootPath?.Replace('/', Path.DirectorySeparatorChar) ?? ""}\", {extensions ?? "[]"}, @\"{entryFile ?? ""}\")");
+                $"new(@\"{rootPath.Replace('/', Path.DirectorySeparatorChar)}\", {extensions ?? "[]"}, @\"{entryFile ?? ""}\")");
         }
 
         const string className = $"Implementations_{Constants.Interfaces.DirectoriesSetupForStaticContent.Name}";
@@ -55,7 +56,7 @@ internal static partial class GeneratorPipelines
               {
                   internal sealed class {{className}} : {{Constants.Interfaces.DirectoriesSetupForStaticContent.Name}}
                   {
-              #nullable enable
+              #nullable disable
                       private readonly FrozenSet<System.ValueTuple<string, string[], string>> _captures = new HashSet<ValueTuple<string, string[], string>>
                       {
                           {{string.Join(",\n            ", captures)}}
@@ -64,7 +65,7 @@ internal static partial class GeneratorPipelines
                       public IEnumerator<ValueTuple<string, string[], string>> GetEnumerator() => _captures.GetEnumerator();
                       
                       IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-              #nullable disable
+              #nullable enable
                   }
               }
               """);
