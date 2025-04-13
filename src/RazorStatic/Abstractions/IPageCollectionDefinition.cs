@@ -10,5 +10,7 @@ public interface IPageCollectionDefinition
 {
     string RootPath { get; }
 
-    IAsyncEnumerable<RenderedResult> RenderComponentsAsync(string filePath, Type pageType);
+    IAsyncEnumerable<RenderedResult> RenderComponentsAsync(Type pageType);
+
+    IAsyncEnumerable<RenderedResult> RenderGroupComponentsAsync(Type pageType);
 }

@@ -53,7 +53,7 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
                 tasksToHandle.AddRange(HandleJsFiles(currentRoot, entryFile, targetDirName));
             }
 
-            foreach (var extension in extensions.SkipWhile(e => e.Equals(".css") || e.Equals(".js")))
+            foreach (var extension in extensions.SkipWhile(static e => e.Equals(".css") || e.Equals(".js")))
             {
                 tasksToHandle.AddRange(HandleFiles(currentRoot, extension, targetDirName));
             }
@@ -74,7 +74,7 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
             ? HandleFiles(source, ".css", targetDirName)
             : [HandleCssImports(source, entryFile, targetDirName)];
 
-    private Task HandleCssImports(DirectoryInfo source, string entryFile, string targetDirName) =>
+    private Task HandleCssImports(FileSystemInfo source, string entryFile, string targetDirName) =>
         Task.Run(
             () =>
             {
@@ -86,7 +86,7 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
                 {
                     // TODO: What about comments, bro? Don't care for now...
 
-                    if (line.StartsWith("@import"))
+                    if (line.StartsWith("@import", StringComparison.Ordinal))
                     {
                         var start = line.IndexOf('"');
                         start = start > -1 ? start + 1 : 0;
@@ -135,7 +135,7 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
                 File.WriteAllText(output, WhitespaceRegex().Replace(sb.ToString(), " "), Encoding.UTF8);
             });
 
-    private List<Task> HandleJsFiles(DirectoryInfo source, string entryFile, string targetDirName)
+    private IEnumerable<Task> HandleJsFiles(DirectoryInfo source, string entryFile, string targetDirName)
     {
         const string fileExtension = ".js";
 
@@ -215,13 +215,13 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
     }
 
     private static bool IsFileOfType(string extension, in string[] extensions, in string entryFile) =>
-        extensions.Contains(extension) || entryFile.EndsWith(extension);
+        extensions.Contains(extension) || entryFile.EndsWith(extension, StringComparison.Ordinal);
 
-    private static string GetCommonDirectory(string sourceDirectory, FileInfo[] files)
+    private static string GetCommonDirectory(string sourceDirectory, IEnumerable<FileInfo> files)
     {
         var directories = files.Select(f => f.DirectoryName?.Replace(sourceDirectory, string.Empty))
-            .Where(n => n is not null)
-            .Select(n => n!.Split(Path.DirectorySeparatorChar))
+            .Where(static n => n is not null)
+            .Select(static n => n!.Split(Path.DirectorySeparatorChar))
             .ToArray();
 
         if (directories.Length == 0 || directories[0].Length == 0)

@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace RazorStatic.FileSystem;
 
-internal class FileWriter : IFileWriter
+internal sealed class FileWriter : IFileWriter
 {
     public Task WriteAsync(string content, string fileName, string fullPath)
     {

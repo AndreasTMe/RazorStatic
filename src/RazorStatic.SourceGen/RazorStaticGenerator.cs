@@ -13,6 +13,7 @@ internal class RazorStaticGenerator : IIncrementalGenerator
     {
         context.AddDirectoriesSetupAttribute();
         context.AddCollectionDefinitionAttribute();
+        context.AddCollectionExtensionAttribute();
         context.AddStaticContentAttribute();
 
         var csProjPipeline = context.AnalyzerConfigOptionsProvider.Select(GeneratorPipelines.ReadCsProjPipeline());
@@ -42,6 +43,7 @@ internal class RazorStaticGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(pagesStorePipeline, GeneratorPipelines.ExecutePagesStorePipeline);
 
         var collectionDefinitionPipeline = context.GetSyntaxProvider(Constants.Attributes.CollectionDefinition.Name);
+        var collectionExtensionPipeline  = context.GetSyntaxProvider(Constants.Attributes.CollectionExtension.Name);
         var pageCollectionsPipeline = pagesStorePipeline.Combine(collectionDefinitionPipeline.Collect())
             .Select(
                 static (combine, _) => new Capture(
@@ -50,7 +52,13 @@ internal class RazorStaticGenerator : IIncrementalGenerator
                     combine.Left.DirectorySetup,
                     combine.Right.IsDefaultOrEmpty
                         ? default
-                        : combine.Right[0].MemberData));
+                        : combine.Right[0].MemberData))
+            .Combine(collectionExtensionPipeline.Collect())
+            .Select(
+                static (combine, _) => combine.Left with
+                {
+                    AttributeExtensionMembers = combine.Right[0].MemberData
+                });
         context.RegisterSourceOutput(pageCollectionsPipeline, GeneratorPipelines.ExecutePageCollectionsPipeline);
     }
 }

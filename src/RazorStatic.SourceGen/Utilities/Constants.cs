@@ -11,16 +11,6 @@ internal static class Constants
 
     public static class Abstractions
     {
-        public static class FileComponentBase
-        {
-            public const string Name = nameof(FileComponentBase);
-
-            public static class Members
-            {
-                public const string PageFilePath = nameof(PageFilePath);
-            }
-        }
-
         public static class CollectionFileComponentBase
         {
             public const string Name = nameof(CollectionFileComponentBase);
@@ -31,6 +21,18 @@ internal static class Constants
                 public const string Content         = nameof(Content);
                 public const string FrontMatter     = nameof(FrontMatter);
                 public const string Slug            = nameof(Slug);
+            }
+        }
+
+        public static class CollectionFileGroupComponentBase
+        {
+            public const string Name = nameof(CollectionFileGroupComponentBase);
+
+            public static class Members
+            {
+                public const string Slug         = nameof(Slug);
+                public const string GroupBy      = nameof(GroupBy);
+                public const string FrontMatters = nameof(FrontMatters);
             }
         }
     }
@@ -71,8 +73,9 @@ internal static class Constants
 
             public static class Members
             {
-                public const string RootPath              = nameof(RootPath);
-                public const string RenderComponentsAsync = nameof(RenderComponentsAsync);
+                public const string RootPath                   = nameof(RootPath);
+                public const string RenderComponentsAsync      = nameof(RenderComponentsAsync);
+                public const string RenderGroupComponentsAsync = nameof(RenderGroupComponentsAsync);
             }
         }
 
@@ -82,8 +85,7 @@ internal static class Constants
 
             public static class Members
             {
-                public const string TryGetCollection          = nameof(TryGetCollection);
-                public const string GetContentFileDirectories = nameof(GetContentFileDirectories);
+                public const string TryGetCollection = nameof(TryGetCollection);
             }
         }
     }
@@ -99,7 +101,18 @@ internal static class Constants
                 public const string Key              = nameof(Key);
                 public const string PageRoute        = nameof(PageRoute);
                 public const string ContentDirectory = nameof(ContentDirectory);
-                public const string Extension        = nameof(Extension);
+            }
+        }
+
+        public static class CollectionExtension
+        {
+            public const string Name = nameof(CollectionExtension);
+
+            public static class Members
+            {
+                public const string Key       = nameof(Key);
+                public const string PageRoute = nameof(PageRoute);
+                public const string GroupBy   = nameof(GroupBy);
             }
         }
 

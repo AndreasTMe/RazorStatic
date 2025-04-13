@@ -59,15 +59,7 @@ internal static partial class GeneratorPipelines
                   
                           public Task<string> {{Constants.Interfaces.PagesStore.Members.RenderComponentAsync}}(string filePath) => _renderer.Dispatcher.InvokeAsync(async () =>
                           {
-                              var type = Types[filePath];
-                              var parameters = type.IsSubclassOf(typeof({{Constants.Abstractions.FileComponentBase.Name}}))
-                                  ? ParameterView.FromDictionary(new Dictionary<string, object?>
-                                    {
-                                        [nameof({{Constants.Abstractions.FileComponentBase.Name}}.{{Constants.Abstractions.FileComponentBase.Members.PageFilePath}})] = filePath,
-                                    })
-                                  : ParameterView.Empty;
-                  
-                              var output = await _renderer.RenderComponentAsync(type, parameters);
+                              var output = await _renderer.RenderComponentAsync(Types[filePath], ParameterView.Empty);
                               return output.ToHtmlString();
                           });
                   #nullable disable

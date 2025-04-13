@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <metadata>
         <id>RazorStatic</id>
-        <version>0.2.6</version>
+        <version>0.3.0</version>
         <title>RazorStatic</title>
         <description>A way to create static sites using Razor components.</description>
         <authors>Andreas T.</authors>
@@ -12,9 +12,9 @@
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
         <dependencies>
             <group targetFramework="net9.0">
-                <dependency id="Microsoft.AspNetCore.Components.Web" version="9.0.0"/>
-                <dependency id="Microsoft.Extensions.DependencyInjection" version="9.0.0"/>
-                <dependency id="Microsoft.Extensions.Hosting" version="9.0.0"/>
+                <dependency id="Microsoft.AspNetCore.Components.Web" version="9.0.4"/>
+                <dependency id="Microsoft.Extensions.DependencyInjection" version="9.0.4"/>
+                <dependency id="Microsoft.Extensions.Hosting" version="9.0.4"/>
             </group>
         </dependencies>
     </metadata>

@@ -1,9 +1,11 @@
 ﻿using Microsoft.CodeAnalysis;
+using RazorStatic.SourceGen.Extensions;
 using RazorStatic.SourceGen.Utilities;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using Capture = RazorStatic.SourceGen.Utilities.Capture;
 
@@ -11,6 +13,14 @@ namespace RazorStatic.SourceGen.Pipelines;
 
 internal static partial class GeneratorPipelines
 {
+    private const string Key        = Constants.Attributes.CollectionDefinition.Members.Key;
+    private const string PageRoute  = Constants.Attributes.CollectionDefinition.Members.PageRoute;
+    private const string ContentDir = Constants.Attributes.CollectionDefinition.Members.ContentDirectory;
+
+    private const string ExtKey       = Constants.Attributes.CollectionExtension.Members.Key;
+    private const string ExtPageRoute = Constants.Attributes.CollectionExtension.Members.PageRoute;
+    private const string ExtGroupBy   = Constants.Attributes.CollectionExtension.Members.GroupBy;
+
     public static void ExecutePageCollectionsPipeline(SourceProductionContext context, Capture capture)
     {
         if (string.IsNullOrWhiteSpace(capture.Properties.ProjectDir)
@@ -18,64 +28,91 @@ internal static partial class GeneratorPipelines
             || capture.AttributeMembers.IsDefaultOrEmpty)
             return;
 
-        var pagesForFactory  = new Dictionary<string, string>();
-        var keysForDirectory = new Dictionary<string, string>();
-        var pagesDirName     = capture.DirectorySetup.Properties[Constants.Attributes.DirectoriesSetup.Members.Pages];
-        var contentDirName   = capture.DirectorySetup.Properties[Constants.Attributes.DirectoriesSetup.Members.Content];
+        var pagesForFactory               = new Dictionary<string, string>();
+        var keysForDirectory              = new Dictionary<string, string>();
+        var pageRoutesToFilesMap          = new Dictionary<string, List<string>>();
+        var extensionsToPaths             = new Dictionary<string, string>();
+        var extensionsToContentFileGroups = new Dictionary<string, Dictionary<string, HashSet<string>>>();
 
-        const string key              = Constants.Attributes.CollectionDefinition.Members.Key;
-        const string pageRoute        = Constants.Attributes.CollectionDefinition.Members.PageRoute;
-        const string contentDirectory = Constants.Attributes.CollectionDefinition.Members.ContentDirectory;
-        const string extension        = Constants.Attributes.CollectionDefinition.Members.Extension;
-
-        var routesToFilesMap = new Dictionary<string, List<string>>();
-
-        foreach (var attributeInfo in capture.AttributeMembers.Where(
-                     info => info.Properties.ContainsKey(key)
-                             && info.Properties.ContainsKey(pageRoute)
-                             && info.Properties.ContainsKey(contentDirectory)
-                             && info.Properties.ContainsKey(extension)))
+        try
         {
-            try
+            var pagesDirName = capture.DirectorySetup.Properties[Constants.Attributes.DirectoriesSetup.Members.Pages];
+            var pagesDir     = Path.Combine(capture.Properties.ProjectDir, pagesDirName).EnsurePathSeparator();
+
+            var contentDirName =
+                capture.DirectorySetup.Properties[Constants.Attributes.DirectoriesSetup.Members.Content];
+            var contentDir = Path.Combine(capture.Properties.ProjectDir, contentDirName).EnsurePathSeparator();
+
+            foreach (var attributeInfo in capture.AttributeMembers
+                         .Where(
+                             static info => info.Properties.ContainsKey(Key)
+                                            && info.Properties.ContainsKey(PageRoute)
+                                            && info.Properties.ContainsKey(ContentDir))
+                         .Where(
+                             static attributeInfo => !string.IsNullOrWhiteSpace(attributeInfo.Properties[Key])
+                                                     && !string.IsNullOrWhiteSpace(attributeInfo.Properties[PageRoute])
+                                                     && !string.IsNullOrWhiteSpace(
+                                                         attributeInfo.Properties[ContentDir])))
             {
-                var routeName = attributeInfo.Properties[pageRoute];
-                var routeDir  = Path.Combine(capture.Properties.ProjectDir, pagesDirName, routeName);
-                var pageFile = Directory.GetFiles(routeDir, "*.razor", SearchOption.AllDirectories)
-                    .FirstOrDefault(
-                        file =>
-                        {
-                            var split             = file.Split(Path.DirectorySeparatorChar);
-                            var fileWithExtension = split[split.Length - 1];
-                            return fileWithExtension.StartsWith("[")
-                                   && fileWithExtension.EndsWith("].razor");
-                        });
+                // Handle content files
 
-                if (string.IsNullOrWhiteSpace(pageFile))
+                if (!TryGetPageCollectionFilePath(pagesDir, attributeInfo.Properties[PageRoute], out var pageFilePath))
+                {
                     continue;
+                }
 
-                var collectionDir = Path.Combine(
-                    capture.Properties.ProjectDir,
-                    contentDirName,
-                    attributeInfo.Properties[contentDirectory]);
-                var collectionRootDir = collectionDir.Substring(
-                    0,
-                    collectionDir.LastIndexOf(Path.DirectorySeparatorChar));
-                var contentFiles = Directory.GetFiles(
-                        collectionDir,
-                        attributeInfo.Properties[extension],
-                        SearchOption.AllDirectories)
-                    .Select(file => $"@\"{file}\"")
-                    .ToList();
+                var pageCollectionDir =
+                    Path.Combine(contentDir, attributeInfo.Properties[ContentDir]).EnsurePathSeparator();
+                var collectionContentFiles = GetContentFiles(pageCollectionDir);
 
-                var routeNameNoSpecialChars = new Regex("[^a-zA-Z0-9]").Replace(routeName, "");
-                routeNameNoSpecialChars = string.Concat(
-                    routeNameNoSpecialChars[0].ToString().ToUpper(),
-                    routeNameNoSpecialChars.Substring(1));
+                var pageRouteName = GetRouteNameNoSpecialChars(attributeInfo.Properties[PageRoute]);
+                pageRoutesToFilesMap[pageRouteName] = collectionContentFiles;
 
-                routesToFilesMap[routeNameNoSpecialChars] = contentFiles;
+                // Handle extensions
+
+                extensionsToPaths.Clear();
+                extensionsToContentFileGroups.Clear();
+
+                foreach (var (file, groups) in GetContentFileGroups(
+                             attributeInfo.Properties[Key],
+                             pagesDir,
+                             collectionContentFiles,
+                             capture.AttributeExtensionMembers.Where(
+                                 static m => m.Properties.ContainsKey(ExtKey)
+                                             && m.Properties.ContainsKey(ExtPageRoute)
+                                             && m.Properties.ContainsKey(ExtGroupBy))))
+                {
+                    var pageType = DirectoryUtils.GetPageType(
+                        file,
+                        capture.Properties.ProjectDir,
+                        capture.AssemblyName);
+                    if (!extensionsToPaths.ContainsKey(pageType))
+                    {
+                        extensionsToPaths[pageType] = file;
+                    }
+
+                    if (!extensionsToContentFileGroups.TryGetValue(pageType, out var existingFileGroup))
+                    {
+                        extensionsToContentFileGroups[pageType] = groups;
+                    }
+                    else
+                    {
+                        foreach (var group in groups)
+                        {
+                            if (!existingFileGroup.ContainsKey(group.Key))
+                            {
+                                existingFileGroup[group.Key] = group.Value;
+                            }
+                            else
+                            {
+                                existingFileGroup[group.Key].UnionWith(group.Value);
+                            }
+                        }
+                    }
+                }
 
                 var className =
-                    $"Implementations_{Constants.Interfaces.PageCollectionDefinition.Name.Replace("Page", routeNameNoSpecialChars)}";
+                    $"Implementations_{Constants.Interfaces.PageCollectionDefinition.Name.Replace("Page", pageRouteName)}";
 
                 context.AddSource(
                     $"{className}.generated.cs",
@@ -91,6 +128,7 @@ internal static partial class GeneratorPipelines
                       using System.Collections.Generic;
                       using System.Linq;
                       using System.IO;
+                      using System.Text;
                       using System.Threading.Tasks;
 
                       namespace {{Constants.RazorStaticCoreNamespace}}
@@ -98,54 +136,25 @@ internal static partial class GeneratorPipelines
                           internal sealed class {{className}} : {{Constants.Interfaces.PageCollectionDefinition.Name}}
                           {
                       #nullable enable
-                              private const string YamlIndicator = "---\r\n";
-                              
-                              private static readonly FrozenDictionary<string, string> ContentFilePaths = new HashSet<string>()
-                              {
-                                  {{string.Join(",\n            ", contentFiles)}}
-                              }
-                              .Select(contentFile => (SlugUtils.Convert(Path.GetFileNameWithoutExtension(contentFile).ToLowerInvariant()), contentFile))
-                              .ToFrozenDictionary(kvp => kvp.Item1, kvp => kvp.Item2);
-                              
                               private readonly HtmlRenderer _renderer;
                               
-                              public string {{Constants.Interfaces.PageCollectionDefinition.Members.RootPath}} => @"{{collectionRootDir}}";
+                              public string {{Constants.Interfaces.PageCollectionDefinition.Members.RootPath}} => @"{{contentDir}}";
                               
                               public {{className}}(HtmlRenderer renderer) => _renderer = renderer;
                       
-                              public async IAsyncEnumerable<RenderedResult> {{Constants.Interfaces.PageCollectionDefinition.Members.RenderComponentsAsync}}(string filePath, Type pageType)
+                              public async IAsyncEnumerable<RenderedResult> {{Constants.Interfaces.PageCollectionDefinition.Members.RenderComponentsAsync}}(Type pageType)
                               {
-                                  foreach (var (slug, contentFilePath) in ContentFilePaths)
+                                  foreach (var (slug, contentFilePath) in ContentFiles.SlugsToPaths)
                                   {
                                       var content = await _renderer.Dispatcher.InvokeAsync(async () =>
                                       {
-                                          var text = File.ReadAllText(contentFilePath)?.Trim();
-                                          if (string.IsNullOrWhiteSpace(text))
-                                              return string.Empty;
-                                          
-                                          string? frontmatterContent = null;
-                                          string? fileContent = null;
-                                          if (text.StartsWith(YamlIndicator))
-                                          {
-                                              var yamlEndIndex = text.IndexOf(YamlIndicator, YamlIndicator.Length, StringComparison.InvariantCulture);
-                                              if (yamlEndIndex > YamlIndicator.Length)
-                                              {
-                                                  frontmatterContent = text[YamlIndicator.Length..yamlEndIndex].Trim();
-                                                  fileContent = text[(yamlEndIndex + YamlIndicator.Length)..].Trim();
-                                              }
-                                          }
-                                          else
-                                          {
-                                              fileContent = text;
-                                          }
-                                          
+                                          var (frontmatter, markdown) = await GetFileContentAsync(contentFilePath);
                                           var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
                                           {
-                                              [nameof({{Constants.Abstractions.FileComponentBase.Name}}.{{Constants.Abstractions.FileComponentBase.Members.PageFilePath}})] = filePath,
                                               [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.ContentFilePath}})] = contentFilePath,
                                               [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.Slug}})] = slug,
-                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.FrontMatter}})] = frontmatterContent,
-                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.Content}})] = fileContent
+                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.FrontMatter}})] = frontmatter,
+                                              [nameof({{Constants.Abstractions.CollectionFileComponentBase.Name}}.{{Constants.Abstractions.CollectionFileComponentBase.Members.Content}})] = markdown
                                           });
                                           var output = await _renderer.RenderComponentAsync(pageType, parameters);
                                           return output.ToHtmlString();
@@ -153,103 +162,355 @@ internal static partial class GeneratorPipelines
                                       yield return new RenderedResult(contentFilePath, content);
                                   }
                               }
+                              
+                              public async IAsyncEnumerable<RenderedResult> {{Constants.Interfaces.PageCollectionDefinition.Members.RenderGroupComponentsAsync}}(Type pageType)
+                              {
+                                  if (!Extensions.FrontmatterGroups.TryGetValue(pageType, out var frontmatterPerGroup))
+                                  {
+                                      yield break;
+                                  }
+                              
+                                  foreach (var (group, frontmatters) in frontmatterPerGroup)
+                                  {
+                                      var slug = SlugUtils.Convert(group.ToLowerInvariant());
+                                      var content = await _renderer.Dispatcher.InvokeAsync(async () =>
+                                      {
+                                          var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
+                                          {
+                                              [nameof({{Constants.Abstractions.CollectionFileGroupComponentBase.Name}}.{{Constants.Abstractions.CollectionFileGroupComponentBase.Members.Slug}})] = slug,
+                                              [nameof({{Constants.Abstractions.CollectionFileGroupComponentBase.Name}}.{{Constants.Abstractions.CollectionFileGroupComponentBase.Members.GroupBy}})] = group,
+                                              [nameof({{Constants.Abstractions.CollectionFileGroupComponentBase.Name}}.{{Constants.Abstractions.CollectionFileGroupComponentBase.Members.FrontMatters}})] = frontmatters
+                                          });
+                                          var output = await _renderer.RenderComponentAsync(pageType, parameters);
+                                          return output.ToHtmlString();
+                                      });
+                                      yield return new RenderedResult(slug, content);
+                                  }
+                              }
+                      
+                              private static async Task<(string? FrontMatter, string? Markdown)> GetFileContentAsync(string contentFilePath)
+                              {
+                                  using var streamReader = File.OpenText(contentFilePath);
+                                  var       text         = await streamReader.ReadLineAsync() ?? string.Empty;
+                              
+                                  if (!text.Equals("---", StringComparison.Ordinal))
+                                  {
+                                      text += "\r\n" + await streamReader.ReadToEndAsync();
+                                      return (string.Empty, text);
+                                  }
+                              
+                                  var builder = new StringBuilder();
+                                  builder.Append(text).AppendLine();
+                                  while (!streamReader.EndOfStream)
+                                  {
+                                      text = await streamReader.ReadLineAsync() ?? string.Empty;
+                                      builder.Append(text).AppendLine();
+                              
+                                      if (text.Equals("---", StringComparison.Ordinal))
+                                      {
+                                          break;
+                                      }
+                                  }
+                              
+                                  return (builder.ToString(), await streamReader.ReadToEndAsync());
+                              }
                       #nullable disable
+                          }
+                          
+                          file static class ContentFiles
+                          {
+                              public static readonly FrozenDictionary<string, string> SlugsToPaths = new HashSet<string>()
+                              {
+                                  {{string.Join(",\n            ", collectionContentFiles)}}
+                              }
+                              .Select(contentFile => (SlugUtils.Convert(Path.GetFileNameWithoutExtension(contentFile).ToLowerInvariant()), contentFile))
+                              .ToFrozenDictionary(kvp => kvp.Item1, kvp => kvp.Item2);
+                          }
+                          
+                          file static class Extensions
+                          {
+                              public static readonly FrozenDictionary<Type, FrozenDictionary<string, FrozenSet<string>>> FrontmatterGroups = new Dictionary<Type, FrozenDictionary<string, FrozenSet<string>>>()
+                              {
+                                  {{string.Join(
+                                      ",\n            ",
+                                      extensionsToContentFileGroups.Select(
+                                          static x => $"[{x.Key}] = new Dictionary<string, FrozenSet<string>>\n            {{\n                {
+                                              string.Join(
+                                                  ",\n                ",
+                                                  x.Value.Select(static y => $"[\"{y.Key}\"] = new HashSet<string>\n                {{\n                    {
+                                                      string.Join(",\n                    ", y.Value.Select(
+                                                          static z => $"\"{
+                                                              z.Trim().Replace("\r\n", @"\r\n").Replace("\"", "\\\"")
+                                                          }\""))
+                                                  }\n                }}.ToFrozenSet()"))
+                                          }\n            }}.ToFrozenDictionary()"))}}
+                              }
+                              .ToFrozenDictionary();
                           }
                       }
                       """);
 
-                pagesForFactory[pageFile]                       = className;
-                keysForDirectory[attributeInfo.Properties[key]] = collectionDir;
+                pagesForFactory[pageFilePath] = className;
+                foreach (var kvp in extensionsToPaths)
+                {
+                    pagesForFactory[kvp.Value] = className;
+                }
+                keysForDirectory[attributeInfo.Properties[Key]] = pageCollectionDir;
             }
-            catch (Exception)
-            {
-                // ignored
-            }
-        }
-
-        context.AddSource(
-            $"Implementations_{Constants.Interfaces.PageCollectionsStore.Name}.generated.cs",
-            $$"""
-              // <auto-generated/>
-              using Microsoft.AspNetCore.Components.Web;
-              using {{Constants.RazorStaticAbstractionsNamespace}};
-              using System.Collections.Frozen;
-              using System.Collections.Generic;
-              using System.Diagnostics.CodeAnalysis;
-              using System.IO;
-
-              using {{Constants.RazorStaticUtilitiesNamespace}};
-              using System;
-              using System.Linq;
-
-              namespace {{Constants.RazorStaticCoreNamespace}}
-              {
-                  internal sealed class Implementations_{{Constants.Interfaces.PageCollectionsStore.Name}} : {{Constants.Interfaces.PageCollectionsStore.Name}}
-                  {
-              #nullable enable
-                      private readonly HtmlRenderer _renderer;
-                      private readonly FrozenDictionary<string, {{Constants.Interfaces.PageCollectionDefinition.Name}}> _collections;
-                      private readonly FrozenDictionary<string, string> _directories;
-                      
-                      public Implementations_{{Constants.Interfaces.PageCollectionsStore.Name}}(HtmlRenderer renderer)
-                      {
-                          _renderer    = renderer;
-                          _collections = new Dictionary<string, {{Constants.Interfaces.PageCollectionDefinition.Name}}>
-                          {
-                              {{string.Join(",\n            ", pagesForFactory.Select(kvp => $"[@\"{kvp.Key}\"] = new {kvp.Value}(renderer)"))}}
-                          }
-                          .ToFrozenDictionary();
-                          _directories = new Dictionary<string, string>
-                          {
-                              {{string.Join(",\n            ", keysForDirectory.Select(kvp => $"[@\"{kvp.Key}\"] = @\"{kvp.Value}\""))}}
-                          }
-                          .ToFrozenDictionary();
-                      }
-                      
-                      public bool {{Constants.Interfaces.PageCollectionsStore.Members.TryGetCollection}}(string filePath, [MaybeNullWhen(false)] out {{Constants.Interfaces.PageCollectionDefinition.Name}} collection)
-                      {
-                          return _collections.TryGetValue(filePath, out collection);
-                      }
-              #nullable disable
-                  }
-              }
-              """);
-
-        foreach (var kvp in routesToFilesMap)
-        {
-            var pageKey = string.Concat(kvp.Key[0].ToString().ToUpper(), kvp.Key.Substring(1));
 
             context.AddSource(
-                $"Helpers_{pageKey}Collection.generated.cs",
+                $"Implementations_{Constants.Interfaces.PageCollectionsStore.Name}.generated.cs",
                 $$"""
                   // <auto-generated/>
-                  using {{Constants.RazorStaticUtilitiesNamespace}};
-                  using System;
+                  using Microsoft.AspNetCore.Components.Web;
+                  using {{Constants.RazorStaticAbstractionsNamespace}};
                   using System.Collections.Frozen;
                   using System.Collections.Generic;
+                  using System.Diagnostics.CodeAnalysis;
                   using System.IO;
+
+                  using {{Constants.RazorStaticUtilitiesNamespace}};
+                  using System;
                   using System.Linq;
 
                   namespace {{Constants.RazorStaticCoreNamespace}}
                   {
-                      public static class {{pageKey}}Collection
+                      internal sealed class Implementations_{{Constants.Interfaces.PageCollectionsStore.Name}} : {{Constants.Interfaces.PageCollectionsStore.Name}}
                       {
                   #nullable enable
-                          private static Lazy<FrozenDictionary<string, string>> _all = new Lazy<FrozenDictionary<string, string>>(() =>
-                          {
-                              return new HashSet<string>()
-                              {
-                                  {{string.Join(",\n            ", kvp.Value)}}
-                              }
-                              .Select(contentFile => (SlugUtils.Convert(Path.GetFileNameWithoutExtension(contentFile).ToLowerInvariant()), contentFile))
-                              .ToFrozenDictionary(kvp => kvp.Item1, kvp => kvp.Item2);
-                          });
+                          private readonly HtmlRenderer _renderer;
+                          private readonly FrozenDictionary<string, {{Constants.Interfaces.PageCollectionDefinition.Name}}> _collections;
+                          private readonly FrozenDictionary<string, string> _directories;
                           
-                          public static FrozenDictionary<string, string> All => _all.Value;
+                          public Implementations_{{Constants.Interfaces.PageCollectionsStore.Name}}(HtmlRenderer renderer)
+                          {
+                              _renderer    = renderer;
+                              _collections = new Dictionary<string, {{Constants.Interfaces.PageCollectionDefinition.Name}}>
+                              {
+                                  {{string.Join(",\n                ", pagesForFactory.Select(static kvp => $"[@\"{kvp.Key}\"] = new {kvp.Value}(renderer)"))}}
+                              }
+                              .ToFrozenDictionary();
+                              _directories = new Dictionary<string, string>
+                              {
+                                  {{string.Join(",\n            ", keysForDirectory.Select(static kvp => $"[@\"{kvp.Key}\"] = @\"{kvp.Value}\""))}}
+                              }
+                              .ToFrozenDictionary();
+                          }
+                          
+                          public bool {{Constants.Interfaces.PageCollectionsStore.Members.TryGetCollection}}(string filePath, [MaybeNullWhen(false)] out {{Constants.Interfaces.PageCollectionDefinition.Name}} collection)
+                          {
+                              return _collections.TryGetValue(filePath, out collection);
+                          }
                   #nullable disable
                       }
                   }
                   """);
+
+            foreach (var kvp in pageRoutesToFilesMap)
+            {
+                var pageKey = string.Concat(kvp.Key[0].ToString().ToUpper(), kvp.Key.Substring(1));
+
+                context.AddSource(
+                    $"Helpers_{pageKey}Collection.generated.cs",
+                    $$"""
+                      // <auto-generated/>
+                      using {{Constants.RazorStaticUtilitiesNamespace}};
+                      using System;
+                      using System.Collections.Frozen;
+                      using System.Collections.Generic;
+                      using System.IO;
+                      using System.Linq;
+
+                      namespace {{Constants.RazorStaticCoreNamespace}}
+                      {
+                          public static class {{pageKey}}Collection
+                          {
+                      #nullable enable
+                              private static Lazy<FrozenDictionary<string, string>> _all = new Lazy<FrozenDictionary<string, string>>(() =>
+                              {
+                                  return new HashSet<string>()
+                                  {
+                                      {{string.Join(",\n                ", kvp.Value)}}
+                                  }
+                                  .Select(contentFile => (SlugUtils.Convert(Path.GetFileNameWithoutExtension(contentFile).ToLowerInvariant()), contentFile))
+                                  .ToFrozenDictionary(kvp => kvp.Item1, kvp => kvp.Item2);
+                              });
+                              
+                              public static FrozenDictionary<string, string> All => _all.Value;
+                      #nullable disable
+                          }
+                      }
+                      """);
+            }
         }
+        catch (Exception)
+        {
+            // ignored
+        }
+    }
+
+    private static bool TryGetPageCollectionFilePath(string pagesDir, string pageRoute, out string pageFile)
+    {
+        var routeDir = Path.Combine(pagesDir, pageRoute);
+        pageFile = Directory.GetFiles(routeDir, "*.razor", SearchOption.AllDirectories)
+                       .FirstOrDefault(
+                           static file =>
+                           {
+                               var split             = file.Split(Path.DirectorySeparatorChar);
+                               var fileWithExtension = split[split.Length - 1];
+                               return fileWithExtension.StartsWith("[", StringComparison.Ordinal)
+                                      && fileWithExtension.EndsWith("].razor", StringComparison.Ordinal);
+                           })
+                   ?? string.Empty;
+
+        return !string.IsNullOrWhiteSpace(pageFile);
+    }
+
+    private static List<string> GetContentFiles(string collectionDir) =>
+        Directory.GetFiles(collectionDir, "*.md", SearchOption.AllDirectories)
+            .Select(static file => $"@\"{file}\"")
+            .ToList();
+
+    private static string GetRouteNameNoSpecialChars(string pageRoute)
+    {
+        pageRoute = new Regex("[^a-zA-Z0-9]").Replace(pageRoute, "");
+        return string.Concat(pageRoute[0].ToString().ToUpper(), pageRoute.Substring(1));
+    }
+
+    private static IEnumerable<(string file, Dictionary<string, HashSet<string>> groups)> GetContentFileGroups(
+        string collectionKey,
+        string pagesDir,
+        IEnumerable<string> collectionContentFiles,
+        IEnumerable<AttributeMemberData> attributeExtensionMembers)
+    {
+        var frontmatterBuilder = new StringBuilder();
+        var contentFiles       = collectionContentFiles.Select(static x => x.TrimStart('@').Trim('"')).ToList();
+
+        foreach (var memberData in attributeExtensionMembers)
+        {
+            if (memberData.Properties[ExtKey] != collectionKey
+                || string.IsNullOrWhiteSpace(memberData.Properties[ExtPageRoute])
+                || string.IsNullOrWhiteSpace(memberData.Properties[ExtGroupBy]))
+            {
+                continue;
+            }
+
+            var extRoute    = memberData.Properties[ExtPageRoute].EnsurePathSeparator();
+            var extRouteDir = Path.Combine(pagesDir, extRoute);
+            var extPageFile = Directory.GetFiles(extRouteDir, "*.razor", SearchOption.AllDirectories)
+                                  .FirstOrDefault(
+                                      static file =>
+                                      {
+                                          var split             = file.Split(Path.DirectorySeparatorChar);
+                                          var fileWithExtension = split[split.Length - 1];
+                                          return fileWithExtension.StartsWith("[", StringComparison.Ordinal)
+                                                 && fileWithExtension.EndsWith("].razor", StringComparison.Ordinal);
+                                      })
+                              ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(extPageFile))
+                continue;
+
+            foreach (var contentFile in contentFiles)
+            {
+                if (!TryGetFrontmatter(
+                        frontmatterBuilder,
+                        contentFile,
+                        memberData.Properties[ExtGroupBy],
+                        out var frontmatter,
+                        out var groupByEntries))
+                {
+                    continue;
+                }
+
+                var contentFileGroups = new Dictionary<string, HashSet<string>>();
+
+                foreach (var entry in groupByEntries)
+                {
+                    if (!contentFileGroups.ContainsKey(entry))
+                    {
+                        contentFileGroups[entry] = [];
+                    }
+
+                    contentFileGroups[entry].Add(frontmatter);
+                }
+
+                yield return (extPageFile, contentFileGroups);
+            }
+        }
+    }
+
+    private static bool TryGetFrontmatter(
+        in StringBuilder frontmatterBuilder,
+        in string contentFile,
+        in string groupBy,
+        out string frontmatter,
+        out HashSet<string> groupByEntries)
+    {
+        frontmatter    = string.Empty;
+        groupByEntries = [];
+
+        using var fileStream   = File.OpenRead(contentFile);
+        using var streamReader = new StreamReader(fileStream, Encoding.UTF8, true, 128);
+
+        var line = streamReader.ReadLine() ?? string.Empty;
+        if (!line.Equals("---", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var found    = false;
+        var captured = false;
+
+        frontmatterBuilder.Append(line).AppendLine();
+        while (!streamReader.EndOfStream)
+        {
+            line = streamReader.ReadLine();
+            if (line is null)
+            {
+                break;
+            }
+
+            frontmatterBuilder.Append(line).AppendLine();
+
+            if (!found)
+            {
+                found = line.StartsWith(groupBy, StringComparison.Ordinal);
+            }
+
+            if (found && !captured)
+            {
+                captured = true;
+
+                var split = line.Split(':').Where(static l => !string.IsNullOrWhiteSpace(l)).ToArray();
+                if (split.Length == 2)
+                {
+                    groupByEntries.UnionWith(split[1].Split(',').Select(static g => g.Trim()));
+                }
+                else
+                {
+                    while ((line = streamReader.ReadLine()) != null)
+                    {
+                        frontmatterBuilder.Append(line).AppendLine();
+                        if (!line.StartsWith("  - ", StringComparison.Ordinal))
+                        {
+                            break;
+                        }
+
+                        groupByEntries.Add(line.Substring(4).Trim());
+                    }
+                }
+            }
+
+            if (line is null || line.Equals("---", StringComparison.Ordinal))
+            {
+                break;
+            }
+        }
+
+        frontmatter = frontmatterBuilder.ToString();
+        frontmatterBuilder.Clear();
+
+        return found;
     }
 }

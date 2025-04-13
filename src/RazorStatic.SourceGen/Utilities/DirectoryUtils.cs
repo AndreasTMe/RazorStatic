@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis.Diagnostics;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -23,24 +24,24 @@ internal static class DirectoryUtils
     public static string GetDirectoryToPageTypePair(string filePath, Capture capture) =>
         $"[@\"{filePath}\"] = {GetPageType(filePath, capture.Properties.ProjectDir, capture.AssemblyName)}";
 
-    private static string Evaluate(string? dir)
-    {
-        if (string.IsNullOrWhiteSpace(dir))
-            return string.Empty;
-
-        if (dir!.StartsWith(Path.DirectorySeparatorChar.ToString()))
-            return dir.Length == 1 ? string.Empty : dir.Substring(1);
-
-        return dir;
-    }
-
-    private static string GetPageType(string filePath, string projectDir, string assemblyName)
+    public static string GetPageType(string filePath, string projectDir, string assemblyName)
     {
         var relativePath      = GetRelativePath(projectDir, filePath);
         var relativeNamespace = Path.GetDirectoryName(relativePath)?.Replace(Path.DirectorySeparatorChar, '.');
         var className         = ConvertToClassName(Path.GetFileNameWithoutExtension(filePath));
 
         return $"typeof({assemblyName}.{relativeNamespace}.{className})";
+    }
+
+    private static string Evaluate(string? dir)
+    {
+        if (string.IsNullOrWhiteSpace(dir))
+            return string.Empty;
+
+        if (dir!.StartsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal))
+            return dir.Length == 1 ? string.Empty : dir.Substring(1);
+
+        return dir;
     }
 
     private static string GetRelativePath(string path1, string path2)

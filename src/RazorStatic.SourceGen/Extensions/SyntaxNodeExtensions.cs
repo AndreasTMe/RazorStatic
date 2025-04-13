@@ -12,7 +12,7 @@ internal static class SyntaxNodeExtensions
 {
     public static bool IsTargetAttributeNode(this SyntaxNode node, string name) =>
         node is CompilationUnitSyntax { AttributeLists.Count: > 0 } cux
-        && cux.AttributeLists.SelectMany(l => l.Attributes).Any(a => a.Name.ToString() == name);
+        && cux.AttributeLists.SelectMany(static l => l.Attributes).Any(a => a.Name.ToString() == name);
 
     public static AttributeMembers GetAttributeMembers(
         this SyntaxNode node,
@@ -21,7 +21,7 @@ internal static class SyntaxNodeExtensions
     {
         var attributeSyntaxes = ((CompilationUnitSyntax)node)
             .AttributeLists
-            .SelectMany(a => a.Attributes)
+            .SelectMany(static a => a.Attributes)
             .Where(a => a.Name.ToString() == attributeName);
 
         var members = new List<AttributeMemberData>();
@@ -29,7 +29,7 @@ internal static class SyntaxNodeExtensions
         {
             var properties = new Dictionary<string, string>();
 
-            foreach (var argument in attributeSyntax.ArgumentList!.Arguments.Where(s => s.NameEquals is not null))
+            foreach (var argument in attributeSyntax.ArgumentList!.Arguments.Where(static s => s.NameEquals is not null))
             {
                 if (semanticModel.GetOperation(argument) is not ISimpleAssignmentOperation operation)
                     continue;

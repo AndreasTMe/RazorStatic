@@ -5,13 +5,13 @@ using RazorStatic.Hosting;
 
 var host = RazorStaticApp.CreateBuilder(args)
     .ConfigureServices(
-        (_, services) =>
+        static (_, services) =>
         {
             services.AddLogging(
-                builder =>
+                static builder =>
                 {
                     builder.AddSimpleConsole(
-                        options =>
+                        static options =>
                         {
                             options.IncludeScopes   = true;
                             options.SingleLine      = true;

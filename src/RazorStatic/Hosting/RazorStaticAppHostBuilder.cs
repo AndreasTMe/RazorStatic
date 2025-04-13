@@ -12,10 +12,7 @@ internal sealed class RazorStaticAppHostBuilder : IRazorStaticAppHostBuilder
 
     public IDictionary<object, object> Properties => _builder.Properties;
 
-    public RazorStaticAppHostBuilder(IHostBuilder builder)
-    {
-        _builder = builder;
-    }
+    public RazorStaticAppHostBuilder(IHostBuilder builder) => _builder = builder;
 
     public IRazorStaticAppHostBuilder ConfigureHostConfiguration(Action<IConfigurationBuilder> configure)
     {

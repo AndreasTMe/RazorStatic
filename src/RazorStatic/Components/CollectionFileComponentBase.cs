@@ -5,7 +5,7 @@ namespace RazorStatic.Components;
 /// <summary>
 /// TODO: Documentation
 /// </summary>
-public abstract class CollectionFileComponentBase : FileComponentBase
+public abstract class CollectionFileComponentBase : ComponentBase
 {
     [Parameter]
     public string? ContentFilePath { get; set; }

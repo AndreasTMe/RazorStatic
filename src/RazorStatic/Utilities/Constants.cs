@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace RazorStatic.Utilities;
 
-public static class Constants
+internal static class Constants
 {
     public const int BatchSize = 10;
 

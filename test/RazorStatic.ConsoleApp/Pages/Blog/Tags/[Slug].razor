@@ -1,0 +1,16 @@
+﻿@using RazorStatic.Components
+@using RazorStatic.ConsoleApp.Layouts
+
+@inherits CollectionFileGroupComponentBase
+
+@{
+    var test1 = Slug;
+    var test2 = GroupBy;
+    var test3 = FrontMatters;
+}
+
+<RootLayout Css="_css/blog.css">
+    <div class="flex justify-center items-center">
+        @Slug
+    </div>
+</RootLayout>

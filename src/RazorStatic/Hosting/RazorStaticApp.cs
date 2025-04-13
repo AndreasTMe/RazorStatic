@@ -38,7 +38,7 @@ public static class RazorStaticApp
             {
                 services.AddLogging();
                 services.AddSingleton<HtmlRenderer>(
-                    provider => new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>()));
+                    static provider => new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>()));
 
                 services.AddOptions<RazorStaticConfigurationOptions>()
                     .Configure(
@@ -52,7 +52,7 @@ public static class RazorStaticApp
 
                 var assembliesTypes = Assembly.GetEntryAssembly()
                                           ?.GetTypes()
-                                          .Where(type => type is { IsInterface: false, IsAbstract: false })
+                                          .Where(static type => type is { IsInterface: false, IsAbstract: false })
                                           .ToList()
                                       ?? [];
 
@@ -78,11 +78,11 @@ public static class RazorStaticApp
 
     private static void AddSingletonOrNull<TService, TNullImplementation>(
         this IServiceCollection services,
-        List<Type> types)
+        IEnumerable<Type> types)
         where TService : class
         where TNullImplementation : TService, new()
     {
-        if (types.FirstOrDefault(type => typeof(TService).IsAssignableFrom(type)) is { } implementationType
+        if (types.FirstOrDefault(static type => typeof(TService).IsAssignableFrom(type)) is { } implementationType
             && implementationType != typeof(TNullImplementation))
         {
             services.AddSingleton(typeof(TService), implementationType);

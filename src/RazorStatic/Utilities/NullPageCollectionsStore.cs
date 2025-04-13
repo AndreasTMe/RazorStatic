@@ -10,6 +10,4 @@ internal sealed class NullPageCollectionsStore : IPageCollectionsStore
         collection = null;
         return false;
     }
-
-    public string[] GetContentFileDirectories(string key) => [];
 }

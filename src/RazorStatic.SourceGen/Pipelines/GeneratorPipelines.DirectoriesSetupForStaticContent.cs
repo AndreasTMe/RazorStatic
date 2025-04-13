@@ -8,10 +8,9 @@ namespace RazorStatic.SourceGen.Pipelines;
 
 internal static partial class GeneratorPipelines
 {
-    public static void
-        ExecuteDirectoriesSetupForStaticContentPipeline(
-            SourceProductionContext context,
-            (CsProjProperties, ImmutableArray<AttributeMembers>) source)
+    public static void ExecuteDirectoriesSetupForStaticContentPipeline(
+        SourceProductionContext context,
+        (CsProjProperties, ImmutableArray<AttributeMembers>) source)
     {
         var (csProj, attributes) = source;
 

@@ -3,6 +3,6 @@
 /// <summary>
 /// TODO: Documentation
 /// </summary>
-/// <param name="FileName"></param>
+/// <param name="FileNameOrPath"></param>
 /// <param name="Content"></param>
-public readonly record struct RenderedResult(string FileName, string Content);
+public readonly record struct RenderedResult(string FileNameOrPath, string Content);
