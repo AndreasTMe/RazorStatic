@@ -30,9 +30,9 @@ internal static class Constants
 
             public static class Members
             {
-                public const string Slug         = nameof(Slug);
-                public const string GroupBy      = nameof(GroupBy);
-                public const string FrontMatters = nameof(FrontMatters);
+                public const string Slug     = nameof(Slug);
+                public const string GroupBy  = nameof(GroupBy);
+                public const string Metadata = nameof(Metadata);
             }
         }
     }

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using System;
 using System.Collections.Generic;
 
 namespace RazorStatic.Components;
@@ -15,5 +16,5 @@ public abstract class CollectionFileGroupComponentBase : ComponentBase
     public string? GroupBy { get; set; }
 
     [Parameter]
-    public IEnumerable<string>? FrontMatters { get; set; }
+    public IEnumerable<(string Slug, string Frontmatter)>? Metadata { get; set; }
 }

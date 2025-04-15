@@ -21,6 +21,8 @@ internal static partial class GeneratorPipelines
     private const string ExtPageRoute = Constants.Attributes.CollectionExtension.Members.PageRoute;
     private const string ExtGroupBy   = Constants.Attributes.CollectionExtension.Members.GroupBy;
 
+    private sealed record FileMetadata(string Name, string Frontmatter);
+
     public static void ExecutePageCollectionsPipeline(SourceProductionContext context, Capture capture)
     {
         if (string.IsNullOrWhiteSpace(capture.Properties.ProjectDir)
@@ -32,7 +34,7 @@ internal static partial class GeneratorPipelines
         var keysForDirectory              = new Dictionary<string, string>();
         var pageRoutesToFilesMap          = new Dictionary<string, List<string>>();
         var extensionsToPaths             = new Dictionary<string, string>();
-        var extensionsToContentFileGroups = new Dictionary<string, Dictionary<string, HashSet<string>>>();
+        var extensionsToContentFileGroups = new Dictionary<string, Dictionary<string, HashSet<FileMetadata>>>();
 
         try
         {
@@ -165,12 +167,12 @@ internal static partial class GeneratorPipelines
                               
                               public async IAsyncEnumerable<RenderedResult> {{Constants.Interfaces.PageCollectionDefinition.Members.RenderGroupComponentsAsync}}(Type pageType)
                               {
-                                  if (!Extensions.FrontmatterGroups.TryGetValue(pageType, out var frontmatterPerGroup))
+                                  if (!Extensions.MetadataGroups.TryGetValue(pageType, out var metadataPerGroup))
                                   {
                                       yield break;
                                   }
                               
-                                  foreach (var (group, frontmatters) in frontmatterPerGroup)
+                                  foreach (var (group, metadata) in metadataPerGroup)
                                   {
                                       var slug = SlugUtils.Convert(group.ToLowerInvariant());
                                       var content = await _renderer.Dispatcher.InvokeAsync(async () =>
@@ -179,7 +181,7 @@ internal static partial class GeneratorPipelines
                                           {
                                               [nameof({{Constants.Abstractions.CollectionFileGroupComponentBase.Name}}.{{Constants.Abstractions.CollectionFileGroupComponentBase.Members.Slug}})] = slug,
                                               [nameof({{Constants.Abstractions.CollectionFileGroupComponentBase.Name}}.{{Constants.Abstractions.CollectionFileGroupComponentBase.Members.GroupBy}})] = group,
-                                              [nameof({{Constants.Abstractions.CollectionFileGroupComponentBase.Name}}.{{Constants.Abstractions.CollectionFileGroupComponentBase.Members.FrontMatters}})] = frontmatters
+                                              [nameof({{Constants.Abstractions.CollectionFileGroupComponentBase.Name}}.{{Constants.Abstractions.CollectionFileGroupComponentBase.Members.Metadata}})] = metadata
                                           });
                                           var output = await _renderer.RenderComponentAsync(pageType, parameters);
                                           return output.ToHtmlString();
@@ -191,28 +193,28 @@ internal static partial class GeneratorPipelines
                               private static async Task<(string? FrontMatter, string? Markdown)> GetFileContentAsync(string contentFilePath)
                               {
                                   using var streamReader = File.OpenText(contentFilePath);
-                                  var       text         = await streamReader.ReadLineAsync() ?? string.Empty;
-                              
-                                  if (!text.Equals("---", StringComparison.Ordinal))
+                      
+                                  var line = await streamReader.ReadLineAsync();
+                                  if (line is not "---")
                                   {
-                                      text += "\r\n" + await streamReader.ReadToEndAsync();
-                                      return (string.Empty, text);
+                                      var rest = await streamReader.ReadToEndAsync();
+                                      return (string.Empty, (line + Environment.NewLine + rest).Trim());
                                   }
-                              
-                                  var builder = new StringBuilder();
-                                  builder.Append(text).AppendLine();
+                                  
+                                  var frontMatterBuilder = new StringBuilder();
                                   while (!streamReader.EndOfStream)
                                   {
-                                      text = await streamReader.ReadLineAsync() ?? string.Empty;
-                                      builder.Append(text).AppendLine();
-                              
-                                      if (text.Equals("---", StringComparison.Ordinal))
+                                      line = await streamReader.ReadLineAsync();
+                                      if (line is "---")
                                       {
                                           break;
                                       }
+                                      frontMatterBuilder.AppendLine(line);
                                   }
-                              
-                                  return (builder.ToString(), await streamReader.ReadToEndAsync());
+                                  
+                                  var markdown = await streamReader.ReadToEndAsync();
+                                  
+                                  return (frontMatterBuilder.ToString().Trim(), markdown.Trim());
                               }
                       #nullable disable
                           }
@@ -229,19 +231,19 @@ internal static partial class GeneratorPipelines
                           
                           file static class Extensions
                           {
-                              public static readonly FrozenDictionary<Type, FrozenDictionary<string, FrozenSet<string>>> FrontmatterGroups = new Dictionary<Type, FrozenDictionary<string, FrozenSet<string>>>()
+                              public static readonly FrozenDictionary<Type, FrozenDictionary<string, FrozenSet<ValueTuple<string, string>>>> MetadataGroups = new Dictionary<Type, FrozenDictionary<string, FrozenSet<ValueTuple<string, string>>>>()
                               {
                                   {{string.Join(
                                       ",\n            ",
                                       extensionsToContentFileGroups.Select(
-                                          static x => $"[{x.Key}] = new Dictionary<string, FrozenSet<string>>\n            {{\n                {
+                                          static x => $"[{x.Key}] = new Dictionary<string, FrozenSet<ValueTuple<string, string>>>\n            {{\n                {
                                               string.Join(
                                                   ",\n                ",
-                                                  x.Value.Select(static y => $"[\"{y.Key}\"] = new HashSet<string>\n                {{\n                    {
+                                                  x.Value.Select(static y => $"[\"{y.Key}\"] = new HashSet<ValueTuple<string, string>>\n                {{\n                    {
                                                       string.Join(",\n                    ", y.Value.Select(
-                                                          static z => $"\"{
-                                                              z.Trim().Replace("\r\n", @"\r\n").Replace("\"", "\\\"")
-                                                          }\""))
+                                                          static z => $"(SlugUtils.Convert(\"{z.Name}\"), \"{
+                                                              z.Frontmatter.Trim().Replace("\r\n", @"\r\n").Replace("\"", "\\\"")
+                                                          }\")"))
                                                   }\n                }}.ToFrozenSet()"))
                                           }\n            }}.ToFrozenDictionary()"))}}
                               }
@@ -377,7 +379,7 @@ internal static partial class GeneratorPipelines
         return string.Concat(pageRoute[0].ToString().ToUpper(), pageRoute.Substring(1));
     }
 
-    private static IEnumerable<(string file, Dictionary<string, HashSet<string>> groups)> GetContentFileGroups(
+    private static IEnumerable<(string file, Dictionary<string, HashSet<FileMetadata>> groups)> GetContentFileGroups(
         string collectionKey,
         string pagesDir,
         IEnumerable<string> collectionContentFiles,
@@ -423,7 +425,15 @@ internal static partial class GeneratorPipelines
                     continue;
                 }
 
-                var contentFileGroups = new Dictionary<string, HashSet<string>>();
+                var contentFileGroups = new Dictionary<string, HashSet<FileMetadata>>();
+
+                var lastIndexOfDirSeparator = contentFile.LastIndexOf(Path.DirectorySeparatorChar) + 1;
+                if (lastIndexOfDirSeparator < 0 || lastIndexOfDirSeparator >= contentFile.Length)
+                {
+                    lastIndexOfDirSeparator = 0;
+                }
+
+                var contentFileName = contentFile.Substring(lastIndexOfDirSeparator).Split('.')[0].ToLowerInvariant();
 
                 foreach (var entry in groupByEntries)
                 {
@@ -432,7 +442,7 @@ internal static partial class GeneratorPipelines
                         contentFileGroups[entry] = [];
                     }
 
-                    contentFileGroups[entry].Add(frontmatter);
+                    contentFileGroups[entry].Add(new FileMetadata(contentFileName, frontmatter));
                 }
 
                 yield return (extPageFile, contentFileGroups);
@@ -462,11 +472,10 @@ internal static partial class GeneratorPipelines
         var found    = false;
         var captured = false;
 
-        frontmatterBuilder.Append(line).AppendLine();
         while (!streamReader.EndOfStream)
         {
             line = streamReader.ReadLine();
-            if (line is null)
+            if (line is null || line.Equals("---", StringComparison.Ordinal))
             {
                 break;
             }
@@ -489,7 +498,7 @@ internal static partial class GeneratorPipelines
                 }
                 else
                 {
-                    while ((line = streamReader.ReadLine()) != null)
+                    while ((line = streamReader.ReadLine()) != null && !line.Equals("---", StringComparison.Ordinal))
                     {
                         frontmatterBuilder.Append(line).AppendLine();
                         if (!line.StartsWith("  - ", StringComparison.Ordinal))

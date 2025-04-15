@@ -57,7 +57,9 @@ internal class RazorStaticGenerator : IIncrementalGenerator
             .Select(
                 static (combine, _) => combine.Left with
                 {
-                    AttributeExtensionMembers = combine.Right[0].MemberData
+                    AttributeExtensionMembers = combine.Right.IsEmpty
+                        ? default
+                        : combine.Right[0].MemberData
                 });
         context.RegisterSourceOutput(pageCollectionsPipeline, GeneratorPipelines.ExecutePageCollectionsPipeline);
     }
