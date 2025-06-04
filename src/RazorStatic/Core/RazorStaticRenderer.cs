@@ -12,6 +12,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RazorStatic.Core;
@@ -48,7 +49,7 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
             : @$"{Environment.CurrentDirectory}\{options.Value.OutputPath}";
     }
 
-    public async Task RenderAsync()
+    public async Task RenderAsync(CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_directoriesSetup.Pages))
         {
@@ -61,14 +62,13 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
 
         var razorFiles = Directory.GetFiles(_directoriesSetup.Pages, "*.razor", SearchOption.AllDirectories)
             .GroupBy(static file => file[..file.LastIndexOf(Path.DirectorySeparatorChar)])
-            .Select(
-                grouping =>
-                {
-                    var path = grouping.Key.Replace(_directoriesSetup.Pages, string.Empty);
-                    return new KeyValuePair<NodePath, ImmutableArray<string>>(
-                        new NodePath(path, path.Count(static p => p == Path.DirectorySeparatorChar)),
-                        [..grouping]);
-                })
+            .Select(grouping =>
+            {
+                var path = grouping.Key.Replace(_directoriesSetup.Pages, string.Empty);
+                return new KeyValuePair<NodePath, ImmutableArray<string>>(
+                    new NodePath(path, path.Count(static p => p == Path.DirectorySeparatorChar)),
+                    [..grouping]);
+            })
             .OrderBy(static kvp => kvp.Key.Path)
             .ToImmutableArray();
 
@@ -87,14 +87,13 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         var root = new Node();
         BuildPageTreeRecursive(root, razorFiles, 0);
 
-        var tasks = GeneratePageTasksRecursiveAsync(root);
+        var tasks = GeneratePageTasksRecursiveAsync(root, cancellationToken);
 
         var sw = new Stopwatch();
         sw.Start();
         for (var i = 0; i < tasks.Count; i += Constants.BatchSize)
         {
-            await Task.WhenAll(tasks.Skip(i).Take(Constants.BatchSize))
-                .ConfigureAwait(false);
+            await Task.WhenAll(tasks.Skip(i).Take(Constants.BatchSize)).ConfigureAwait(false);
         }
         sw.Stop();
 
@@ -128,17 +127,17 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         }
     }
 
-    private List<Task> GeneratePageTasksRecursiveAsync(Node node)
+    private List<Task> GeneratePageTasksRecursiveAsync(Node node, CancellationToken cancellationToken)
     {
-        var tasks = node.Leaves.Select(GeneratePageTaskAsync).ToList();
+        var tasks = node.Leaves.Select(leaf => GeneratePageTaskAsync(leaf, cancellationToken)).ToList();
 
         foreach (var childNode in node.Nodes)
-            tasks.AddRange(GeneratePageTasksRecursiveAsync(childNode));
+            tasks.AddRange(GeneratePageTasksRecursiveAsync(childNode, cancellationToken));
 
         return tasks;
     }
 
-    private async Task GeneratePageTaskAsync(Leaf leaf)
+    private async Task GeneratePageTaskAsync(Leaf leaf, CancellationToken cancellationToken)
     {
         if (leaf.IsDynamicPath)
         {
@@ -148,7 +147,9 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
             {
                 if (pageType.IsSubclassOf(typeof(CollectionFileComponentBase)))
                 {
-                    await foreach (var (filePath, pageHtml) in collection.RenderComponentsAsync(pageType))
+                    await foreach (var (filePath, pageHtml) in collection.RenderComponentsAsync(
+                                       pageType,
+                                       cancellationToken))
                     {
                         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
                         if (string.IsNullOrWhiteSpace(pageHtml))
@@ -165,7 +166,9 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
                 }
                 else if (pageType.IsSubclassOf(typeof(CollectionFileGroupComponentBase)))
                 {
-                    await foreach (var (fileName, pageHtml) in collection.RenderGroupComponentsAsync(pageType))
+                    await foreach (var (fileName, pageHtml) in collection.RenderGroupComponentsAsync(
+                                       pageType,
+                                       cancellationToken))
                     {
                         ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
                         if (string.IsNullOrWhiteSpace(pageHtml))
@@ -188,7 +191,8 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         }
         else
         {
-            var pageHtml = await _pagesStore.RenderComponentAsync(leaf.FullPath).ConfigureAwait(false);
+            var pageHtml = await _pagesStore.RenderComponentAsync(leaf.FullPath, cancellationToken)
+                .ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(pageHtml))
                 return;

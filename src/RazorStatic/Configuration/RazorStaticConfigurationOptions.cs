@@ -44,14 +44,13 @@ public sealed class RazorStaticConfigurationOptions
         if (args is not { Length: > 0 })
             return;
 
-        var argsDictionary = args.Select(
-                arg =>
-                {
-                    var kvp = arg.Split('=');
-                    return new KeyValuePair<string, string?>(
-                        kvp[0],
-                        kvp.Length == 2 ? kvp[1] : null);
-                })
+        var argsDictionary = args.Select(static arg =>
+            {
+                var kvp = arg.Split('=');
+                return new KeyValuePair<string, string?>(
+                    kvp[0],
+                    kvp.Length == 2 ? kvp[1] : null);
+            })
             .ToFrozenDictionary();
 
         ShouldServe = argsDictionary.TryGetValue("--serve", out var value) && value is null or "true";

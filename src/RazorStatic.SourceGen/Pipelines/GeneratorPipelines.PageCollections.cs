@@ -46,15 +46,14 @@ internal static partial class GeneratorPipelines
             var contentDir = Path.Combine(capture.Properties.ProjectDir, contentDirName).EnsurePathSeparator();
 
             foreach (var attributeInfo in capture.AttributeMembers
-                         .Where(
-                             static info => info.Properties.ContainsKey(Key)
-                                            && info.Properties.ContainsKey(PageRoute)
-                                            && info.Properties.ContainsKey(ContentDir))
-                         .Where(
-                             static attributeInfo => !string.IsNullOrWhiteSpace(attributeInfo.Properties[Key])
-                                                     && !string.IsNullOrWhiteSpace(attributeInfo.Properties[PageRoute])
-                                                     && !string.IsNullOrWhiteSpace(
-                                                         attributeInfo.Properties[ContentDir])))
+                         .Where(static info => info.Properties.ContainsKey(Key)
+                                               && info.Properties.ContainsKey(PageRoute)
+                                               && info.Properties.ContainsKey(ContentDir))
+                         .Where(static attributeInfo => !string.IsNullOrWhiteSpace(attributeInfo.Properties[Key])
+                                                        && !string.IsNullOrWhiteSpace(
+                                                            attributeInfo.Properties[PageRoute])
+                                                        && !string.IsNullOrWhiteSpace(
+                                                            attributeInfo.Properties[ContentDir])))
             {
                 // Handle content files
 
@@ -79,10 +78,9 @@ internal static partial class GeneratorPipelines
                              attributeInfo.Properties[Key],
                              pagesDir,
                              collectionContentFiles,
-                             capture.AttributeExtensionMembers.Where(
-                                 static m => m.Properties.ContainsKey(ExtKey)
-                                             && m.Properties.ContainsKey(ExtPageRoute)
-                                             && m.Properties.ContainsKey(ExtGroupBy))))
+                             capture.AttributeExtensionMembers.Where(static m => m.Properties.ContainsKey(ExtKey)
+                                 && m.Properties.ContainsKey(ExtPageRoute)
+                                 && m.Properties.ContainsKey(ExtGroupBy))))
                 {
                     var pageType = DirectoryUtils.GetPageType(
                         file,
@@ -130,7 +128,9 @@ internal static partial class GeneratorPipelines
                       using System.Collections.Generic;
                       using System.Linq;
                       using System.IO;
+                      using System.Runtime.CompilerServices;
                       using System.Text;
+                      using System.Threading;
                       using System.Threading.Tasks;
 
                       namespace {{Constants.RazorStaticCoreNamespace}}
@@ -143,11 +143,13 @@ internal static partial class GeneratorPipelines
                               public string {{Constants.Interfaces.PageCollectionDefinition.Members.RootPath}} => @"{{contentDir}}";
                               
                               public {{className}}(HtmlRenderer renderer) => _renderer = renderer;
-                      
-                              public async IAsyncEnumerable<RenderedResult> {{Constants.Interfaces.PageCollectionDefinition.Members.RenderComponentsAsync}}(Type pageType)
+
+                              public async IAsyncEnumerable<RenderedResult> {{Constants.Interfaces.PageCollectionDefinition.Members.RenderComponentsAsync}}(Type pageType, [EnumeratorCancellation] CancellationToken cancellationToken)
                               {
                                   foreach (var (slug, contentFilePath) in ContentFiles.SlugsToPaths)
                                   {
+                                      if (cancellationToken.IsCancellationRequested) yield break;
+                                      
                                       var content = await _renderer.Dispatcher.InvokeAsync(async () =>
                                       {
                                           var (frontmatter, markdown) = await GetFileContentAsync(contentFilePath);
@@ -165,7 +167,7 @@ internal static partial class GeneratorPipelines
                                   }
                               }
                               
-                              public async IAsyncEnumerable<RenderedResult> {{Constants.Interfaces.PageCollectionDefinition.Members.RenderGroupComponentsAsync}}(Type pageType)
+                              public async IAsyncEnumerable<RenderedResult> {{Constants.Interfaces.PageCollectionDefinition.Members.RenderGroupComponentsAsync}}(Type pageType, [EnumeratorCancellation] CancellationToken cancellationToken)
                               {
                                   if (!Extensions.MetadataGroups.TryGetValue(pageType, out var metadataPerGroup))
                                   {
@@ -174,6 +176,8 @@ internal static partial class GeneratorPipelines
                               
                                   foreach (var (group, metadata) in metadataPerGroup)
                                   {
+                                      if (cancellationToken.IsCancellationRequested) yield break;
+
                                       var slug = SlugUtils.Convert(group.ToLowerInvariant());
                                       var content = await _renderer.Dispatcher.InvokeAsync(async () =>
                                       {
@@ -189,11 +193,11 @@ internal static partial class GeneratorPipelines
                                       yield return new RenderedResult(slug, content);
                                   }
                               }
-                      
+
                               private static async Task<(string? FrontMatter, string? Markdown)> GetFileContentAsync(string contentFilePath)
                               {
                                   using var streamReader = File.OpenText(contentFilePath);
-                      
+
                                   var line = await streamReader.ReadLineAsync();
                                   if (line is not "---")
                                   {
@@ -355,14 +359,13 @@ internal static partial class GeneratorPipelines
     {
         var routeDir = Path.Combine(pagesDir, pageRoute);
         pageFile = Directory.GetFiles(routeDir, "*.razor", SearchOption.AllDirectories)
-                       .FirstOrDefault(
-                           static file =>
-                           {
-                               var split             = file.Split(Path.DirectorySeparatorChar);
-                               var fileWithExtension = split[split.Length - 1];
-                               return fileWithExtension.StartsWith("[", StringComparison.Ordinal)
-                                      && fileWithExtension.EndsWith("].razor", StringComparison.Ordinal);
-                           })
+                       .FirstOrDefault(static file =>
+                       {
+                           var split             = file.Split(Path.DirectorySeparatorChar);
+                           var fileWithExtension = split[split.Length - 1];
+                           return fileWithExtension.StartsWith("[", StringComparison.Ordinal)
+                                  && fileWithExtension.EndsWith("].razor", StringComparison.Ordinal);
+                       })
                    ?? string.Empty;
 
         return !string.IsNullOrWhiteSpace(pageFile);
@@ -400,14 +403,13 @@ internal static partial class GeneratorPipelines
             var extRoute    = memberData.Properties[ExtPageRoute].EnsurePathSeparator();
             var extRouteDir = Path.Combine(pagesDir, extRoute);
             var extPageFile = Directory.GetFiles(extRouteDir, "*.razor", SearchOption.AllDirectories)
-                                  .FirstOrDefault(
-                                      static file =>
-                                      {
-                                          var split             = file.Split(Path.DirectorySeparatorChar);
-                                          var fileWithExtension = split[split.Length - 1];
-                                          return fileWithExtension.StartsWith("[", StringComparison.Ordinal)
-                                                 && fileWithExtension.EndsWith("].razor", StringComparison.Ordinal);
-                                      })
+                                  .FirstOrDefault(static file =>
+                                  {
+                                      var split             = file.Split(Path.DirectorySeparatorChar);
+                                      var fileWithExtension = split[split.Length - 1];
+                                      return fileWithExtension.StartsWith("[", StringComparison.Ordinal)
+                                             && fileWithExtension.EndsWith("].razor", StringComparison.Ordinal);
+                                  })
                               ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(extPageFile))

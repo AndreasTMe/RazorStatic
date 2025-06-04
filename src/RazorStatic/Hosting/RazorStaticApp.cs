@@ -33,46 +33,44 @@ public static class RazorStaticApp
     {
         var builder = Host.CreateDefaultBuilder(args);
 
-        builder.ConfigureServices(
-            (_, services) =>
-            {
-                services.AddLogging();
-                services.AddSingleton<HtmlRenderer>(
-                    static provider => new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>()));
+        builder.ConfigureServices((_, services) =>
+        {
+            services.AddLogging();
+            services.AddSingleton<HtmlRenderer>(static provider =>
+                new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>()));
 
-                services.AddOptions<RazorStaticConfigurationOptions>()
-                    .Configure(
-                        options =>
-                        {
-                            configure?.Invoke(options);
+            services.AddOptions<RazorStaticConfigurationOptions>()
+                .Configure(options =>
+                {
+                    configure?.Invoke(options);
 
-                            options.AddCommandLineArgs(args);
-                            options.Evaluate();
-                        });
+                    options.AddCommandLineArgs(args);
+                    options.Evaluate();
+                });
 
-                var assembliesTypes = Assembly.GetEntryAssembly()
-                                          ?.GetTypes()
-                                          .Where(static type => type is { IsInterface: false, IsAbstract: false })
-                                          .ToList()
-                                      ?? [];
+            var assembliesTypes = Assembly.GetEntryAssembly()
+                                      ?.GetTypes()
+                                      .Where(static type => type is { IsInterface: false, IsAbstract: false })
+                                      .ToList()
+                                  ?? [];
 
-                services.AddSingletonOrNull<IDirectoriesSetup, NullDirectoriesSetup>(assembliesTypes);
-                services.AddSingletonOrNull<IDirectoriesSetupForStaticContent, NullDirectoriesSetupForStaticContent>(
-                    assembliesTypes);
-                services.AddSingletonOrNull<IPagesStore, NullPagesStore>(assembliesTypes);
-                services.AddSingletonOrNull<IPageCollectionsStore, NullPageCollectionsStore>(assembliesTypes);
+            services.AddSingletonOrNull<IDirectoriesSetup, NullDirectoriesSetup>(assembliesTypes);
+            services.AddSingletonOrNull<IDirectoriesSetupForStaticContent, NullDirectoriesSetupForStaticContent>(
+                assembliesTypes);
+            services.AddSingletonOrNull<IPagesStore, NullPagesStore>(assembliesTypes);
+            services.AddSingletonOrNull<IPageCollectionsStore, NullPageCollectionsStore>(assembliesTypes);
 
-                services.AddTransient<IFileWriter, FileWriter>();
-                services.AddTransient<IStaticContentHandler, StaticContentHandler>();
-                services.AddTransient<IRazorStaticRenderer, RazorStaticRenderer>();
+            services.AddScoped<IFileWriter, FileWriter>();
+            services.AddScoped<IStaticContentHandler, StaticContentHandler>();
+            services.AddScoped<IRazorStaticRenderer, RazorStaticRenderer>();
 
-                var options = services.BuildServiceProvider()
-                    .GetRequiredService<IOptions<RazorStaticConfigurationOptions>>()
-                    .Value;
+            var options = services.BuildServiceProvider()
+                .GetRequiredService<IOptions<RazorStaticConfigurationOptions>>()
+                .Value;
 
-                if (options.ShouldServe)
-                    services.AddHostedService<RazorStaticHostedService>();
-            });
+            if (options.ShouldServe)
+                services.AddHostedService<RazorStaticHostedService>();
+        });
         return new RazorStaticAppHostBuilder(builder);
     }
 

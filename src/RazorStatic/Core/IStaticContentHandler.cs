@@ -1,8 +1,9 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 
 namespace RazorStatic.Core;
 
 internal interface IStaticContentHandler
 {
-    Task HandleAsync();
+    Task HandleAsync(CancellationToken cancellationToken);
 }

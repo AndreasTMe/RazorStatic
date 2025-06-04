@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace RazorStatic.Abstractions;
 
@@ -10,7 +11,7 @@ public interface IPageCollectionDefinition
 {
     string RootPath { get; }
 
-    IAsyncEnumerable<RenderedResult> RenderComponentsAsync(Type pageType);
+    IAsyncEnumerable<RenderedResult> RenderComponentsAsync(Type pageType, CancellationToken cancellationToken);
 
-    IAsyncEnumerable<RenderedResult> RenderGroupComponentsAsync(Type pageType);
+    IAsyncEnumerable<RenderedResult> RenderGroupComponentsAsync(Type pageType, CancellationToken cancellationToken);
 }
