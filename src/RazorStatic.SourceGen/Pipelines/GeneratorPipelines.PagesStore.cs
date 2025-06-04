@@ -38,6 +38,7 @@ internal static partial class GeneratorPipelines
                   using System;
                   using System.Collections.Frozen;
                   using System.Collections.Generic;
+                  using System.Threading;
                   using System.Threading.Tasks;
 
                   namespace {{Constants.RazorStaticGeneratedNamespace}}
@@ -52,13 +53,15 @@ internal static partial class GeneratorPipelines
                           .ToFrozenDictionary();
                           
                           private readonly HtmlRenderer _renderer;
-                  
+
                           public {{className}}(HtmlRenderer renderer) => _renderer = renderer;
                           
                           public Type {{Constants.Interfaces.PagesStore.Members.GetPageType}}(string filePath) => Types[filePath];
-                  
-                          public Task<string> {{Constants.Interfaces.PagesStore.Members.RenderComponentAsync}}(string filePath) => _renderer.Dispatcher.InvokeAsync(async () =>
+
+                          public Task<string> {{Constants.Interfaces.PagesStore.Members.RenderComponentAsync}}(string filePath, CancellationToken cancellationToken) => _renderer.Dispatcher.InvokeAsync(async () =>
                           {
+                              if (cancellationToken.IsCancellationRequested) return string.Empty;
+                              
                               var output = await _renderer.RenderComponentAsync(Types[filePath], ParameterView.Empty);
                               return output.ToHtmlString();
                           });

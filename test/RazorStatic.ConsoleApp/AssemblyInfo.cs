@@ -2,7 +2,7 @@
 
 [assembly: DirectoriesSetup(Pages = "Pages", Content = "Content")]
 
-[assembly: CollectionDefinition(Key = "blog", PageRoute = "Blog", ContentDirectory = "Blog")]
+[assembly: CollectionDefinition(Key = "blog", PageRoute = "Blog", ContentDirectory = "Blog", StorageType = StorageType.Local)]
 [assembly: CollectionExtension(Key = "blog", PageRoute = "Blog/Categories", GroupBy = "category")]
 [assembly: CollectionExtension(Key = "blog", PageRoute = "Blog/Tags", GroupBy = "tag")]
 

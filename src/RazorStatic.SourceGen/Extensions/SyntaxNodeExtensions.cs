@@ -29,7 +29,8 @@ internal static class SyntaxNodeExtensions
         {
             var properties = new Dictionary<string, string>();
 
-            foreach (var argument in attributeSyntax.ArgumentList!.Arguments.Where(static s => s.NameEquals is not null))
+            foreach (var argument in
+                     attributeSyntax.ArgumentList!.Arguments.Where(static s => s.NameEquals is not null))
             {
                 if (semanticModel.GetOperation(argument) is not ISimpleAssignmentOperation operation)
                     continue;

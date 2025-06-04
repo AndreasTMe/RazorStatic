@@ -35,6 +35,20 @@ internal static class Constants
                 public const string Metadata = nameof(Metadata);
             }
         }
+
+        public static class PageCollectionDefinition
+        {
+            public const string Name = "Abstract" + nameof(PageCollectionDefinition);
+
+            public static class Members
+            {
+                public const string RootPath                   = nameof(RootPath);
+                public const string RenderComponentsAsync      = nameof(RenderComponentsAsync);
+                public const string RenderGroupComponentsAsync = nameof(RenderGroupComponentsAsync);
+
+                public const string GetFileContentAsync = nameof(GetFileContentAsync);
+            }
+        }
     }
 
     public static class Interfaces
@@ -70,13 +84,6 @@ internal static class Constants
         public static class PageCollectionDefinition
         {
             public const string Name = "I" + nameof(PageCollectionDefinition);
-
-            public static class Members
-            {
-                public const string RootPath                   = nameof(RootPath);
-                public const string RenderComponentsAsync      = nameof(RenderComponentsAsync);
-                public const string RenderGroupComponentsAsync = nameof(RenderGroupComponentsAsync);
-            }
         }
 
         public static class PageCollectionsStore
@@ -101,6 +108,7 @@ internal static class Constants
                 public const string Key              = nameof(Key);
                 public const string PageRoute        = nameof(PageRoute);
                 public const string ContentDirectory = nameof(ContentDirectory);
+                public const string StorageType      = nameof(StorageType);
             }
         }
 
@@ -136,6 +144,21 @@ internal static class Constants
                 public const string RootPath   = nameof(RootPath);
                 public const string Extensions = nameof(Extensions);
                 public const string EntryFile  = nameof(EntryFile);
+            }
+        }
+    }
+
+    public static class Enums
+    {
+        public static class StorageType
+        {
+            public const string Name = nameof(StorageType);
+
+            public static class Values
+            {
+                public const string Local     = nameof(Local);
+                public const string AzureBlob = nameof(AzureBlob);
+                public const string AwsS3     = nameof(AwsS3);
             }
         }
     }

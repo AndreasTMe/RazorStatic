@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RazorStatic.Abstractions;
@@ -10,5 +11,5 @@ public interface IPagesStore
 {
     Type GetPageType(string filePath);
 
-    Task<string> RenderComponentAsync(string filePath);
+    Task<string> RenderComponentAsync(string filePath, CancellationToken cancellationToken);
 }

@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RazorStatic.Core;
@@ -28,7 +29,7 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
         _options                  = options;
     }
 
-    public async Task HandleAsync()
+    public async Task HandleAsync(CancellationToken cancellationToken)
     {
         var tasksToHandle = new List<Task>();
         var projectRoot   = _directories.ProjectRoot;
@@ -46,16 +47,16 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
             // TODO: It's better to have a parser for both CSS and JS files, but that's too much for now
             if (IsFileOfType(".css", extensions, entryFile))
             {
-                tasksToHandle.AddRange(HandleCssFiles(currentRoot, entryFile, targetDirName));
+                tasksToHandle.AddRange(HandleCssFilesAsync(currentRoot, entryFile, targetDirName, cancellationToken));
             }
             else if (IsFileOfType(".js", extensions, entryFile))
             {
-                tasksToHandle.AddRange(HandleJsFiles(currentRoot, entryFile, targetDirName));
+                tasksToHandle.AddRange(HandleJsFilesAsync(currentRoot, entryFile, targetDirName, cancellationToken));
             }
 
             foreach (var extension in extensions.SkipWhile(static e => e.Equals(".css") || e.Equals(".js")))
             {
-                tasksToHandle.AddRange(HandleFiles(currentRoot, extension, targetDirName));
+                tasksToHandle.AddRange(HandleFilesAsync(currentRoot, extension, targetDirName, cancellationToken));
             }
         }
 
@@ -63,18 +64,25 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
         {
             for (var i = 0; i < tasksToHandle.Count; i += Constants.BatchSize)
             {
-                await Task.WhenAll(tasksToHandle.Skip(i).Take(Constants.BatchSize))
-                    .ConfigureAwait(false);
+                await Task.WhenAll(tasksToHandle.Skip(i).Take(Constants.BatchSize)).ConfigureAwait(false);
             }
         }
     }
 
-    private List<Task> HandleCssFiles(DirectoryInfo source, string entryFile, string targetDirName) =>
+    private List<Task> HandleCssFilesAsync(
+        DirectoryInfo source,
+        string entryFile,
+        string targetDirName,
+        CancellationToken cancellationToken) =>
         string.IsNullOrWhiteSpace(entryFile)
-            ? HandleFiles(source, ".css", targetDirName)
-            : [HandleCssImports(source, entryFile, targetDirName)];
+            ? HandleFilesAsync(source, ".css", targetDirName, cancellationToken)
+            : [HandleCssImportsAsync(source, entryFile, targetDirName, cancellationToken)];
 
-    private Task HandleCssImports(FileSystemInfo source, string entryFile, string targetDirName) =>
+    private Task HandleCssImportsAsync(
+        FileSystemInfo source,
+        string entryFile,
+        string targetDirName,
+        CancellationToken cancellationToken) =>
         Task.Run(
             () =>
             {
@@ -133,15 +141,20 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
 
                 // TODO: Maybe split if line is too long? Not sure if it can be a problem.
                 File.WriteAllText(output, WhitespaceRegex().Replace(sb.ToString(), " "), Encoding.UTF8);
-            });
+            },
+            cancellationToken);
 
-    private IEnumerable<Task> HandleJsFiles(DirectoryInfo source, string entryFile, string targetDirName)
+    private IEnumerable<Task> HandleJsFilesAsync(
+        DirectoryInfo source,
+        string entryFile,
+        string targetDirName,
+        CancellationToken cancellationToken)
     {
         const string fileExtension = ".js";
 
         if (string.IsNullOrWhiteSpace(entryFile))
         {
-            return HandleFiles(source, fileExtension, targetDirName);
+            return HandleFilesAsync(source, fileExtension, targetDirName, cancellationToken);
         }
 
         // Handle the following:
@@ -153,10 +166,14 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
         // ------------------------------------------------------------
 
         // TODO: Replace JS handling later, use default behaviour for now
-        return HandleFiles(source, fileExtension, targetDirName);
+        return HandleFilesAsync(source, fileExtension, targetDirName, cancellationToken);
     }
 
-    private List<Task> HandleFiles(DirectoryInfo source, string fileExtension, string targetDirName)
+    private List<Task> HandleFilesAsync(
+        DirectoryInfo source,
+        string fileExtension,
+        string targetDirName,
+        CancellationToken cancellationToken)
     {
         if (!fileExtension.StartsWith('*'))
         {
@@ -174,27 +191,27 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
         var commonDirectory       = GetCommonDirectory(source.FullName, files);
         var isNullOrWhiteSpaceDir = string.IsNullOrWhiteSpace(commonDirectory);
 
-        return files.Select(
-                file => Task.Run(
-                    () =>
+        return files.Select(file => Task.Run(
+                () =>
+                {
+                    var actualDir = dir;
+                    if (!isNullOrWhiteSpaceDir)
                     {
-                        var actualDir = dir;
-                        if (!isNullOrWhiteSpaceDir)
+                        var subDir = file.DirectoryName
+                                         ?.Replace(commonDirectory, string.Empty)
+                                         .TrimStart(Path.DirectorySeparatorChar)
+                                     ?? string.Empty;
+
+                        if (!string.IsNullOrWhiteSpace(subDir))
                         {
-                            var subDir = file.DirectoryName
-                                             ?.Replace(commonDirectory, string.Empty)
-                                             .TrimStart(Path.DirectorySeparatorChar)
-                                         ?? string.Empty;
-
-                            if (!string.IsNullOrWhiteSpace(subDir))
-                            {
-                                actualDir = Path.Combine(dir, subDir);
-                                Directory.CreateDirectory(actualDir);
-                            }
+                            actualDir = Path.Combine(dir, subDir);
+                            Directory.CreateDirectory(actualDir);
                         }
+                    }
 
-                        file.CopyTo(Path.Combine(actualDir, file.Name), true);
-                    }))
+                    file.CopyTo(Path.Combine(actualDir, file.Name), true);
+                },
+                cancellationToken))
             .ToList();
     }
 
