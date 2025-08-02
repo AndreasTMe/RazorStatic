@@ -9,7 +9,7 @@ internal sealed partial class RazorStaticRenderer
 
     private readonly record struct NodePath(string Path, int Depth);
 
-    private class Node
+    private sealed class Node
     {
         private readonly List<Leaf> _leaves = [];
         private readonly List<Node> _nodes  = [];
@@ -22,7 +22,7 @@ internal sealed partial class RazorStaticRenderer
         public void AddLeaf(Leaf leaf) => _leaves.Add(leaf);
     }
 
-    private partial class Leaf
+    private sealed class Leaf
     {
         public string FullPath      { get; }
         public bool   IsDynamicPath { get; }
@@ -30,10 +30,13 @@ internal sealed partial class RazorStaticRenderer
         public Leaf(string fullPath)
         {
             FullPath      = fullPath;
-            IsDynamicPath = IsDynamicPathRegex().Match(fullPath).Success;
+            IsDynamicPath = RegexHelpers.IsDynamicPathRegex().Match(fullPath).Success;
         }
+    }
 
+    private static partial class RegexHelpers
+    {
         [GeneratedRegex(@"\\\[[a-zA-Z]([a-zA-Z0-9_]?)+\]\.razor$")]
-        private static partial Regex IsDynamicPathRegex();
+        internal static partial Regex IsDynamicPathRegex();
     }
 }

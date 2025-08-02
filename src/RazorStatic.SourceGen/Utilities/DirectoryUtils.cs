@@ -18,7 +18,7 @@ internal static class DirectoryUtils
 
         return new CsProjProperties(
             projectDir.TrimEnd(Path.DirectorySeparatorChar),
-            projectDir + Evaluate(outputPath.TrimEnd(Path.DirectorySeparatorChar)));
+            Path.Combine(projectDir, Evaluate(outputPath.TrimEnd(Path.DirectorySeparatorChar))));
     }
 
     public static string GetDirectoryToPageTypePair(string filePath, Capture capture) =>

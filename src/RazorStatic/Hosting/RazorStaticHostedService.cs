@@ -46,6 +46,11 @@ internal sealed class RazorStaticHostedService : IHostedService
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
+        if (!_options.ShouldServe)
+        {
+            return Task.CompletedTask;
+        }
+
         var uri = $"http://localhost:{_options.Port}/";
         _server.Prefixes.Add(uri);
         _server.Start();
@@ -70,20 +75,11 @@ internal sealed class RazorStaticHostedService : IHostedService
                             if (completedTask != contextTask) continue;
 
                             var context = await contextTask.ConfigureAwait(false);
-
-                            await _semaphore.WaitAsync(token);
-
-                            _ = HandleRequestAsync(context, token)
-                                .ContinueWith(_ => _semaphore.Release(), token);
+                            _ = HandleRequestAsync(context, token);
                         }
                         catch (ObjectDisposedException)
                         {
                             // ignored
-                            break;
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            _logger.LogDebug("Cancellation requested for HttpListener.");
                             break;
                         }
                         catch (HttpListenerException ex) when (ex.ErrorCode == 995)
@@ -98,9 +94,9 @@ internal sealed class RazorStaticHostedService : IHostedService
                         }
                     }
                 }
-                finally
+                catch (OperationCanceledException)
                 {
-                    await StopServerIfListeningAsync();
+                    _logger.LogDebug("Cancellation requested for HttpListener.");
                 }
             },
             cancellationToken);
@@ -110,33 +106,38 @@ internal sealed class RazorStaticHostedService : IHostedService
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        await StopServerIfListeningAsync();
+        if (_options.ShouldServe)
+        {
+            _logger.LogInformation("Stopping server...");
+
+            await _cts.CancelAsync();
+
+            if (_server.IsListening)
+            {
+                await _semaphore.WaitAsync(cancellationToken);
+                try
+                {
+                    _server.Stop();
+                    _server.Close();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "An error occurred on close.");
+                }
+                finally
+                {
+                    _semaphore.Release();
+                }
+            }
+        }
+
         _semaphore.Dispose();
-    }
-
-    private async Task StopServerIfListeningAsync()
-    {
-        if (!_server.IsListening)
-            return;
-
-        await _semaphore.WaitAsync();
-        try
-        {
-            _server.Stop();
-            _server.Close();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred on close.");
-        }
-        finally
-        {
-            _semaphore.Release();
-        }
+        _cts.Dispose();
     }
 
     private async Task HandleRequestAsync(HttpListenerContext context, CancellationToken cancellationToken)
     {
+        await _semaphore.WaitAsync(cancellationToken);
         try
         {
             var requestUrl = context.Request.Url!.AbsolutePath.Trim('/');
@@ -215,6 +216,7 @@ internal sealed class RazorStaticHostedService : IHostedService
         finally
         {
             context.Response.OutputStream.Close();
+            _semaphore.Release();
         }
     }
 

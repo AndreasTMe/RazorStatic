@@ -15,6 +15,14 @@ namespace RazorStatic.Core;
 
 internal sealed partial class StaticContentHandler : IStaticContentHandler
 {
+    private sealed record FileState(
+        FileInfo File,
+        string Directory,
+        string CommonDirectory,
+        bool IsValidCommonDirectory);
+
+    private sealed record CssImportState(FileSystemInfo Source, string EntryFile, string OutputDirectory);
+
     private readonly IDirectoriesSetup                         _directories;
     private readonly IDirectoriesSetupForStaticContent         _directoriesStaticContent;
     private readonly IOptions<RazorStaticConfigurationOptions> _options;
@@ -69,24 +77,29 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
         }
     }
 
-    private List<Task> HandleCssFilesAsync(
+    private IEnumerable<Task> HandleCssFilesAsync(
         DirectoryInfo source,
         string entryFile,
         string targetDirName,
         CancellationToken cancellationToken) =>
         string.IsNullOrWhiteSpace(entryFile)
             ? HandleFilesAsync(source, ".css", targetDirName, cancellationToken)
-            : [HandleCssImportsAsync(source, entryFile, targetDirName, cancellationToken)];
+            : HandleCssImportsAsync(source, entryFile, targetDirName, cancellationToken);
 
-    private Task HandleCssImportsAsync(
+    private IEnumerable<Task> HandleCssImportsAsync(
         FileSystemInfo source,
         string entryFile,
         string targetDirName,
-        CancellationToken cancellationToken) =>
-        Task.Run(
-            () =>
+        CancellationToken cancellationToken)
+    {
+        yield return Task.Factory.StartNew(
+            static state =>
             {
-                var lines    = File.ReadAllLines(Path.Combine(source.FullName, entryFile), Encoding.UTF8);
+                var taskState = (CssImportState)state!;
+
+                var lines = File.ReadAllLines(
+                    Path.Combine(taskState.Source.FullName, taskState.EntryFile),
+                    Encoding.UTF8);
                 var urls     = new List<string>();
                 var linesMap = new Dictionary<int, string>();
 
@@ -109,7 +122,7 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
                         end = end > start ? end : line.Length - 1;
 
                         var importText = File.ReadAllText(
-                            Path.Combine(source.FullName, line[start..end]),
+                            Path.Combine(taskState.Source.FullName, line[start..end]),
                             Encoding.UTF8);
                         linesMap.TryAdd(index, importText);
 
@@ -136,13 +149,16 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
                     sb.AppendLine(linesMap.GetValueOrDefault(index, line));
                 }
 
-                var dir    = CreateDirectoryIfNotExists(targetDirName);
-                var output = Path.Combine(dir, entryFile);
+                var output = Path.Combine(taskState.OutputDirectory, taskState.EntryFile);
 
                 // TODO: Maybe split if line is too long? Not sure if it can be a problem.
                 File.WriteAllText(output, WhitespaceRegex().Replace(sb.ToString(), " "), Encoding.UTF8);
             },
-            cancellationToken);
+            new CssImportState(source, entryFile, CreateDirectoryIfNotExists(targetDirName, _options.Value.OutputPath)),
+            cancellationToken,
+            TaskCreationOptions.DenyChildAttach,
+            TaskScheduler.Default);
+    }
 
     private IEnumerable<Task> HandleJsFilesAsync(
         DirectoryInfo source,
@@ -169,7 +185,7 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
         return HandleFilesAsync(source, fileExtension, targetDirName, cancellationToken);
     }
 
-    private List<Task> HandleFilesAsync(
+    private IEnumerable<Task> HandleFilesAsync(
         DirectoryInfo source,
         string fileExtension,
         string targetDirName,
@@ -183,43 +199,50 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
         var files = source.GetFiles(fileExtension, SearchOption.AllDirectories);
         if (files.Length <= 0)
         {
-            return [];
+            yield break;
         }
 
-        var dir = CreateDirectoryIfNotExists(targetDirName);
+        var directory = CreateDirectoryIfNotExists(targetDirName, _options.Value.OutputPath);
 
-        var commonDirectory       = GetCommonDirectory(source.FullName, files);
-        var isNullOrWhiteSpaceDir = string.IsNullOrWhiteSpace(commonDirectory);
+        var commonDirectory        = GetCommonDirectory(source.FullName, files);
+        var isValidCommonDirectory = !string.IsNullOrWhiteSpace(commonDirectory);
 
-        return files.Select(file => Task.Run(
-                () =>
+        foreach (var file in files)
+        {
+            yield return Task.Factory.StartNew(
+                static state =>
                 {
-                    var actualDir = dir;
-                    if (!isNullOrWhiteSpaceDir)
+                    var taskState = (FileState)state!;
+
+                    var actualDir = taskState.Directory;
+                    if (!taskState.IsValidCommonDirectory)
                     {
-                        var subDir = file.DirectoryName
-                                         ?.Replace(commonDirectory, string.Empty)
+                        var subDir = taskState.File.DirectoryName
+                                         ?.Replace(taskState.CommonDirectory, string.Empty)
                                          .TrimStart(Path.DirectorySeparatorChar)
                                      ?? string.Empty;
 
                         if (!string.IsNullOrWhiteSpace(subDir))
                         {
-                            actualDir = Path.Combine(dir, subDir);
+                            actualDir = Path.Combine(taskState.Directory, subDir);
                             Directory.CreateDirectory(actualDir);
                         }
                     }
 
-                    file.CopyTo(Path.Combine(actualDir, file.Name), true);
+                    taskState.File.CopyTo(Path.Combine(actualDir, taskState.File.Name), true);
                 },
-                cancellationToken))
-            .ToList();
+                new FileState(file, directory, commonDirectory, isValidCommonDirectory),
+                cancellationToken,
+                TaskCreationOptions.DenyChildAttach,
+                TaskScheduler.Default);
+        }
     }
 
-    private string CreateDirectoryIfNotExists(string subDir)
+    private static string CreateDirectoryIfNotExists(string subDir, string outputPath)
     {
         var subDirParts = subDir.Split(Path.DirectorySeparatorChar);
 
-        var dir = Path.Combine(Environment.CurrentDirectory, _options.Value.OutputPath);
+        var dir = Path.Combine(Environment.CurrentDirectory, outputPath);
         Directory.CreateDirectory(dir); // Probably already created in previous step, but to be safe
 
         foreach (var part in subDirParts)
@@ -236,12 +259,15 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
 
     private static string GetCommonDirectory(string sourceDirectory, IEnumerable<FileInfo> files)
     {
-        var directories = files.Select(f => f.DirectoryName?.Replace(sourceDirectory, string.Empty))
-            .Where(static n => n is not null)
-            .Select(static n => n!.Split(Path.DirectorySeparatorChar))
-            .ToArray();
+        var directories = new List<string[]>();
 
-        if (directories.Length == 0 || directories[0].Length == 0)
+        foreach (var file in files.Where(static f => f.DirectoryName is not null))
+        {
+            var fileEdited = file.DirectoryName!.Replace(sourceDirectory, string.Empty);
+            directories.Add(fileEdited.Split(Path.DirectorySeparatorChar));
+        }
+
+        if (directories.Count == 0 || directories[0].Length == 0)
         {
             return sourceDirectory;
         }
@@ -256,7 +282,7 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
 
             var current = directories[0][index];
 
-            for (var i = 1; i < directories.Length; i++)
+            for (var i = 1; i < directories.Count; i++)
             {
                 if (index >= directories[i].Length || current != directories[i][index])
                 {

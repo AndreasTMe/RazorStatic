@@ -1,8 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using RazorStatic.Abstractions;
 using RazorStatic.Configuration;
 using RazorStatic.Core;
@@ -36,8 +34,7 @@ public static class RazorStaticApp
         builder.ConfigureServices((_, services) =>
         {
             services.AddLogging();
-            services.AddSingleton<HtmlRenderer>(static provider =>
-                new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>()));
+            services.AddSingleton<HtmlRenderer>();
 
             services.AddOptions<RazorStaticConfigurationOptions>()
                 .Configure(options =>
@@ -64,12 +61,7 @@ public static class RazorStaticApp
             services.AddScoped<IStaticContentHandler, StaticContentHandler>();
             services.AddScoped<IRazorStaticRenderer, RazorStaticRenderer>();
 
-            var options = services.BuildServiceProvider()
-                .GetRequiredService<IOptions<RazorStaticConfigurationOptions>>()
-                .Value;
-
-            if (options.ShouldServe)
-                services.AddHostedService<RazorStaticHostedService>();
+            services.AddHostedService<RazorStaticHostedService>();
         });
         return new RazorStaticAppHostBuilder(builder);
     }

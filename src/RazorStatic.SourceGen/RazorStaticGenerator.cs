@@ -18,12 +18,12 @@ internal class RazorStaticGenerator : IIncrementalGenerator
 
         var csProjPipeline = context.AnalyzerConfigOptionsProvider.Select(GeneratorPipelines.ReadCsProjPipeline());
 
-        var directoriesSetupPipeline = context.GetSyntaxProvider(Constants.Attributes.DirectoriesSetup.Name);
+        var directoriesSetupPipeline = context.GetValuesProvider(Constants.Attributes.DirectoriesSetup.Name);
         context.RegisterSourceOutput(
             csProjPipeline.Combine(directoriesSetupPipeline.Collect()),
             GeneratorPipelines.ExecuteDirectoriesSetupPipeline);
 
-        var staticContentDirectoriesSetupPipeline = context.GetSyntaxProvider(Constants.Attributes.StaticContent.Name);
+        var staticContentDirectoriesSetupPipeline = context.GetValuesProvider(Constants.Attributes.StaticContent.Name);
         context.RegisterSourceOutput(
             csProjPipeline.Combine(staticContentDirectoriesSetupPipeline.Collect()),
             GeneratorPipelines.ExecuteDirectoriesSetupForStaticContentPipeline);
@@ -41,8 +41,8 @@ internal class RazorStaticGenerator : IIncrementalGenerator
                     : combine.Right[0].MemberData[0]));
         context.RegisterSourceOutput(pagesStorePipeline, GeneratorPipelines.ExecutePagesStorePipeline);
 
-        var collectionDefinitionPipeline = context.GetSyntaxProvider(Constants.Attributes.CollectionDefinition.Name);
-        var collectionExtensionPipeline  = context.GetSyntaxProvider(Constants.Attributes.CollectionExtension.Name);
+        var collectionDefinitionPipeline = context.GetValuesProvider(Constants.Attributes.CollectionDefinition.Name);
+        var collectionExtensionPipeline  = context.GetValuesProvider(Constants.Attributes.CollectionExtension.Name);
         var pageCollectionsPipeline = pagesStorePipeline.Combine(collectionDefinitionPipeline.Collect())
             .Select(static (combine, _) => new Capture(
                 combine.Left.Properties,

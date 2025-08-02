@@ -8,7 +8,7 @@ internal sealed record Capture
     public string                              AssemblyName              { get; }
     public AttributeMemberData                 DirectorySetup            { get; }
     public ImmutableArray<AttributeMemberData> AttributeMembers          { get; }
-    public ImmutableArray<AttributeMemberData> AttributeExtensionMembers { get; set; }
+    public ImmutableArray<AttributeMemberData> AttributeExtensionMembers { get; init; }
 
     public Capture(
         CsProjProperties properties,

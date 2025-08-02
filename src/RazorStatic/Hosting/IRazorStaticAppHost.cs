@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 
 namespace RazorStatic.Hosting;
 
@@ -7,5 +8,5 @@ namespace RazorStatic.Hosting;
 /// </summary>
 public interface IRazorStaticAppHost
 {
-    Task RunAsync();
+    Task RunAsync(CancellationToken cancellationToken = default);
 }

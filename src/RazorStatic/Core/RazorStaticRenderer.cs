@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Components.Web;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorStatic.Abstractions;
 using RazorStatic.Components;
@@ -19,7 +18,6 @@ namespace RazorStatic.Core;
 
 internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
 {
-    private readonly HtmlRenderer                 _htmlRenderer;
     private readonly IDirectoriesSetup            _directoriesSetup;
     private readonly IPagesStore                  _pagesStore;
     private readonly IPageCollectionsStore        _pageCollectionsStore;
@@ -29,7 +27,6 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
     private readonly string _rootPath;
 
     public RazorStaticRenderer(
-        HtmlRenderer htmlRenderer,
         IDirectoriesSetup directoriesSetup,
         IPagesStore pagesStore,
         IPageCollectionsStore pageCollectionsStore,
@@ -37,7 +34,6 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         IOptions<RazorStaticConfigurationOptions> options,
         ILogger<RazorStaticRenderer> logger)
     {
-        _htmlRenderer         = htmlRenderer;
         _directoriesSetup     = directoriesSetup;
         _pagesStore           = pagesStore;
         _pageCollectionsStore = pageCollectionsStore;
@@ -100,8 +96,6 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         _logger.LogInformation("Rendering elapsed time: {Milliseconds}ms.", sw.ElapsedMilliseconds);
     }
 
-    public ValueTask DisposeAsync() => _htmlRenderer.DisposeAsync();
-
     private static void BuildPageTreeRecursive(
         Node root,
         ImmutableArray<KeyValuePair<NodePath, ImmutableArray<string>>> razorFiles,
@@ -129,7 +123,10 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
 
     private List<Task> GeneratePageTasksRecursiveAsync(Node node, CancellationToken cancellationToken)
     {
-        var tasks = node.Leaves.Select(leaf => GeneratePageTaskAsync(leaf, cancellationToken)).ToList();
+        var tasks = new List<Task>();
+
+        foreach (var leafNode in node.Leaves)
+            tasks.Add(GeneratePageTaskAsync(leafNode, cancellationToken));
 
         foreach (var childNode in node.Nodes)
             tasks.AddRange(GeneratePageTasksRecursiveAsync(childNode, cancellationToken));

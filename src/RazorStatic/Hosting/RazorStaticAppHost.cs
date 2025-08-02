@@ -15,9 +15,11 @@ internal sealed class RazorStaticAppHost : IRazorStaticAppHost
 
     public RazorStaticAppHost(IHost host) => _host = host;
 
-    public async Task RunAsync()
+    public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        var cts = new CancellationTokenSource();
+        var cts = cancellationToken == CancellationToken.None
+            ? new CancellationTokenSource()
+            : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         try
         {
@@ -29,14 +31,12 @@ internal sealed class RazorStaticAppHost : IRazorStaticAppHost
                 await scope.ServiceProvider.GetRequiredService<IRazorStaticRenderer>()
                     .RenderAsync(cts.Token)
                     .ConfigureAwait(false);
-            }
 
-            if (_host.Services.GetRequiredService<IOptions<RazorStaticConfigurationOptions>>().Value is not
+                if (scope.ServiceProvider.GetRequiredService<IOptions<RazorStaticConfigurationOptions>>()
+                        .Value is not { ShouldServe: true })
                 {
-                    ShouldServe: true
-                })
-            {
-                return;
+                    return;
+                }
             }
 
             await _host.StartAsync(cts.Token).ConfigureAwait(false);
