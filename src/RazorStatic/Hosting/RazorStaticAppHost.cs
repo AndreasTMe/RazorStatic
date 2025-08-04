@@ -1,9 +1,11 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RazorStatic.Configuration;
 using RazorStatic.Core;
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,12 +27,22 @@ internal sealed class RazorStaticAppHost : IRazorStaticAppHost
         {
             await using (var scope = _host.Services.GetRequiredService<IServiceScopeFactory>().CreateAsyncScope())
             {
+                var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger<RazorStaticAppHost>();
+
+                var sw = new Stopwatch();
+                sw.Start();
+
                 await scope.ServiceProvider.GetRequiredService<IStaticContentHandler>()
                     .HandleAsync(cts.Token)
                     .ConfigureAwait(false);
                 await scope.ServiceProvider.GetRequiredService<IRazorStaticRenderer>()
                     .RenderAsync(cts.Token)
                     .ConfigureAwait(false);
+
+                sw.Stop();
+
+                logger.LogInformation("Rendering elapsed time: {Milliseconds}ms.", sw.ElapsedMilliseconds);
 
                 if (scope.ServiceProvider.GetRequiredService<IOptions<RazorStaticConfigurationOptions>>()
                         .Value is not { ShouldServe: true })

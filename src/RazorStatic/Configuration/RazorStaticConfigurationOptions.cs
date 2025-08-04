@@ -13,9 +13,11 @@ public sealed class RazorStaticConfigurationOptions
     private const string PortErrorMessage       = "A port must be greater than 1024 and less than 65535.";
     private const string OutputPathErrorMessage = "An output path for the static files is required.";
 
-    private int    _port       = 13390;
-    private string _outputPath = "out";
-    private bool   _isAbsoluteOutputPath;
+    private int     _port       = 13390;
+    private string  _outputPath = "out";
+    private string? _actualOutputPath;
+    private bool    _isAbsoluteOutputPath;
+    private int     _maxConcurrentFiles = 10;
 
     private bool _isLocked;
 
@@ -37,7 +39,18 @@ public sealed class RazorStaticConfigurationOptions
         set => SetValueIfUnlocked(ref _isAbsoluteOutputPath, value);
     }
 
+    public int MaxConcurrentFiles
+    {
+        get => _maxConcurrentFiles;
+        set => SetValueIfUnlocked(ref _maxConcurrentFiles, value);
+    }
+
     internal bool ShouldServe { get; private set; }
+
+    internal string ActualOutputPath =>
+        _actualOutputPath ??= IsAbsoluteOutputPath
+            ? OutputPath
+            : @$"{Environment.CurrentDirectory}\{OutputPath}";
 
     internal void AddCommandLineArgs(string[]? args)
     {

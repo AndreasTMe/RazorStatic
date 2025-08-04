@@ -37,10 +37,10 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
         _options                  = options;
     }
 
-    public async Task HandleAsync(CancellationToken cancellationToken)
+    public Task HandleAsync(CancellationToken cancellationToken)
     {
-        var tasksToHandle = new List<Task>();
-        var projectRoot   = _directories.ProjectRoot;
+        var tasks       = new List<Task>();
+        var projectRoot = _directories.ProjectRoot;
 
         foreach (var (rootPath, extensions, entryFile) in _directoriesStaticContent)
         {
@@ -55,26 +55,20 @@ internal sealed partial class StaticContentHandler : IStaticContentHandler
             // TODO: It's better to have a parser for both CSS and JS files, but that's too much for now
             if (IsFileOfType(".css", extensions, entryFile))
             {
-                tasksToHandle.AddRange(HandleCssFilesAsync(currentRoot, entryFile, targetDirName, cancellationToken));
+                tasks.AddRange(HandleCssFilesAsync(currentRoot, entryFile, targetDirName, cancellationToken));
             }
             else if (IsFileOfType(".js", extensions, entryFile))
             {
-                tasksToHandle.AddRange(HandleJsFilesAsync(currentRoot, entryFile, targetDirName, cancellationToken));
+                tasks.AddRange(HandleJsFilesAsync(currentRoot, entryFile, targetDirName, cancellationToken));
             }
 
             foreach (var extension in extensions.SkipWhile(static e => e.Equals(".css") || e.Equals(".js")))
             {
-                tasksToHandle.AddRange(HandleFilesAsync(currentRoot, extension, targetDirName, cancellationToken));
+                tasks.AddRange(HandleFilesAsync(currentRoot, extension, targetDirName, cancellationToken));
             }
         }
 
-        if (tasksToHandle.Count > 0)
-        {
-            for (var i = 0; i < tasksToHandle.Count; i += Constants.BatchSize)
-            {
-                await Task.WhenAll(tasksToHandle.Skip(i).Take(Constants.BatchSize)).ConfigureAwait(false);
-            }
-        }
+        return TaskUtils.RunBatchAsync(tasks, _options.Value.MaxConcurrentFiles);
     }
 
     private IEnumerable<Task> HandleCssFilesAsync(

@@ -7,8 +7,6 @@ using RazorStatic.FileSystem;
 using RazorStatic.Utilities;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -18,13 +16,12 @@ namespace RazorStatic.Core;
 
 internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
 {
-    private readonly IDirectoriesSetup            _directoriesSetup;
-    private readonly IPagesStore                  _pagesStore;
-    private readonly IPageCollectionsStore        _pageCollectionsStore;
-    private readonly IFileWriter                  _fileWriter;
-    private readonly ILogger<RazorStaticRenderer> _logger;
-
-    private readonly string _rootPath;
+    private readonly IDirectoriesSetup                         _directoriesSetup;
+    private readonly IPagesStore                               _pagesStore;
+    private readonly IPageCollectionsStore                     _pageCollectionsStore;
+    private readonly IFileWriter                               _fileWriter;
+    private readonly IOptions<RazorStaticConfigurationOptions> _options;
+    private readonly ILogger<RazorStaticRenderer>              _logger;
 
     public RazorStaticRenderer(
         IDirectoriesSetup directoriesSetup,
@@ -38,14 +35,11 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         _pagesStore           = pagesStore;
         _pageCollectionsStore = pageCollectionsStore;
         _fileWriter           = fileWriter;
+        _options              = options;
         _logger               = logger;
-
-        _rootPath = options.Value.IsAbsoluteOutputPath
-            ? options.Value.OutputPath
-            : @$"{Environment.CurrentDirectory}\{options.Value.OutputPath}";
     }
 
-    public async Task RenderAsync(CancellationToken cancellationToken)
+    public Task RenderAsync(CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_directoriesSetup.Pages))
         {
@@ -53,94 +47,51 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
                 "No project path was defined. Make sure the '{DirectoriesSetup}' was generated using the appropriate attribute.",
                 nameof(IDirectoriesSetup));
 
-            return;
+            return Task.CompletedTask;
         }
 
-        var razorFiles = Directory.GetFiles(_directoriesSetup.Pages, "*.razor", SearchOption.AllDirectories)
-            .GroupBy(static file => file[..file.LastIndexOf(Path.DirectorySeparatorChar)])
-            .Select(grouping =>
-            {
-                var path = grouping.Key.Replace(_directoriesSetup.Pages, string.Empty);
-                return new KeyValuePair<NodePath, ImmutableArray<string>>(
-                    new NodePath(path, path.Count(static p => p == Path.DirectorySeparatorChar)),
-                    [..grouping]);
-            })
-            .OrderBy(static kvp => kvp.Key.Path)
-            .ToImmutableArray();
+        var razorRoutes = Directory.GetFiles(_directoriesSetup.Pages, "*.razor", SearchOption.AllDirectories)
+            .Select(static file => new RazorRoute(file))
+            .OrderBy(static route => route.Depth)
+            .ToList();
 
-        if (razorFiles.IsEmpty)
+        if (razorRoutes.Count == 0)
         {
             _logger.LogInformation("No Razor components found!");
-            return;
+            return Task.CompletedTask;
         }
 
-        var topLevelDir = razorFiles[0];
-        if (topLevelDir.Value.All(static f => Path.GetFileNameWithoutExtension(f) != Constants.Page.Index))
+        var minDepth = razorRoutes[0].Depth;
+        foreach (var route in razorRoutes)
         {
-            throw new ArgumentException("The root directory should contain an Index razor file");
+            if (route.Depth > minDepth)
+            {
+                throw new ArgumentException("The root directory should contain an Index razor file");
+            }
+
+            if (Path.GetFileNameWithoutExtension(route.FullPath)
+                .Equals(Constants.Page.Index, StringComparison.OrdinalIgnoreCase))
+            {
+                break;
+            }
         }
 
-        var root = new Node();
-        BuildPageTreeRecursive(root, razorFiles, 0);
-
-        var tasks = GeneratePageTasksRecursiveAsync(root, cancellationToken);
-
-        var sw = new Stopwatch();
-        sw.Start();
-        for (var i = 0; i < tasks.Count; i += Constants.BatchSize)
-        {
-            await Task.WhenAll(tasks.Skip(i).Take(Constants.BatchSize)).ConfigureAwait(false);
-        }
-        sw.Stop();
-
-        _logger.LogInformation("Rendering elapsed time: {Milliseconds}ms.", sw.ElapsedMilliseconds);
-    }
-
-    private static void BuildPageTreeRecursive(
-        Node root,
-        ImmutableArray<KeyValuePair<NodePath, ImmutableArray<string>>> razorFiles,
-        int index)
-    {
-        var directory = razorFiles[index];
-
-        foreach (var file in directory.Value)
-            root.AddLeaf(new Leaf(file));
-
-        for (var i = 1; i < razorFiles.Length; i++)
-        {
-            if (razorFiles[i].Key.Depth != directory.Key.Depth + 1)
-                continue;
-
-            if (!razorFiles[i].Key.Path.StartsWith(directory.Key.Path, StringComparison.Ordinal))
-                continue;
-
-            var node = new Node();
-            BuildPageTreeRecursive(node, razorFiles, i);
-
-            root.AddNode(node);
-        }
-    }
-
-    private List<Task> GeneratePageTasksRecursiveAsync(Node node, CancellationToken cancellationToken)
-    {
         var tasks = new List<Task>();
+        foreach (var route in razorRoutes)
+        {
+            tasks.Add(GeneratePageTaskAsync(route, cancellationToken));
+        }
 
-        foreach (var leafNode in node.Leaves)
-            tasks.Add(GeneratePageTaskAsync(leafNode, cancellationToken));
-
-        foreach (var childNode in node.Nodes)
-            tasks.AddRange(GeneratePageTasksRecursiveAsync(childNode, cancellationToken));
-
-        return tasks;
+        return TaskUtils.RunBatchAsync(tasks, _options.Value.MaxConcurrentFiles);
     }
 
-    private async Task GeneratePageTaskAsync(Leaf leaf, CancellationToken cancellationToken)
+    private async Task GeneratePageTaskAsync(RazorRoute route, CancellationToken cancellationToken)
     {
-        if (leaf.IsDynamicPath)
+        if (route.IsDynamic)
         {
-            var pageType = _pagesStore.GetPageType(leaf.FullPath);
+            var pageType = _pagesStore.GetPageType(route.FullPath);
 
-            if (_pageCollectionsStore.TryGetCollection(leaf.FullPath, out var collection))
+            if (_pageCollectionsStore.TryGetCollection(route.FullPath, out var collection))
             {
                 if (pageType.IsSubclassOf(typeof(CollectionFileComponentBase)))
                 {
@@ -152,8 +103,11 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
                         if (string.IsNullOrWhiteSpace(pageHtml))
                             return;
 
-                        var fileInfo = GenerateFileInfo(filePath, collection.RootPath, isCollection: true);
-                        await _fileWriter.WriteAsync(pageHtml, fileInfo.Name, _rootPath + fileInfo.Directory)
+                        var fileInfo = FileUtils.GenerateDynamicPageInfo(filePath, collection.RootPath);
+                        await _fileWriter.WriteAsync(
+                                pageHtml,
+                                fileInfo.Name,
+                                _options.Value.ActualOutputPath + fileInfo.Directory)
                             .ConfigureAwait(false);
 
                         _logger.LogInformation(
@@ -171,8 +125,14 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
                         if (string.IsNullOrWhiteSpace(pageHtml))
                             return;
 
-                        var fileInfo = GenerateFileInfo(leaf.FullPath, _directoriesSetup.Pages, dynamicPath: fileName);
-                        await _fileWriter.WriteAsync(pageHtml, fileInfo.Name, _rootPath + fileInfo.Directory)
+                        var fileInfo = FileUtils.GenerateGroupedDynamicPageInfo(
+                            route.FullPath,
+                            _directoriesSetup.Pages,
+                            fileName);
+                        await _fileWriter.WriteAsync(
+                                pageHtml,
+                                fileInfo.Name,
+                                _options.Value.ActualOutputPath + fileInfo.Directory)
                             .ConfigureAwait(false);
 
                         _logger.LogInformation(
@@ -188,56 +148,17 @@ internal sealed partial class RazorStaticRenderer : IRazorStaticRenderer
         }
         else
         {
-            var pageHtml = await _pagesStore.RenderComponentAsync(leaf.FullPath, cancellationToken)
+            var pageHtml = await _pagesStore.RenderComponentAsync(route.FullPath, cancellationToken)
                 .ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(pageHtml))
                 return;
 
-            var fileInfo = GenerateFileInfo(leaf.FullPath, _directoriesSetup.Pages);
-            await _fileWriter.WriteAsync(pageHtml, fileInfo.Name, _rootPath + fileInfo.Directory).ConfigureAwait(false);
+            var fileInfo = FileUtils.GenerateSimplePageInfo(route.FullPath, _directoriesSetup.Pages);
+            await _fileWriter.WriteAsync(pageHtml, fileInfo.Name, _options.Value.ActualOutputPath + fileInfo.Directory)
+                .ConfigureAwait(false);
 
             _logger.LogInformation("Rendered '{Page}.html' page successfully.", fileInfo.Directory + fileInfo.Name);
         }
-    }
-
-    private static FileInfo GenerateFileInfo(
-        string fullPath,
-        string rootPath,
-        bool isCollection = false,
-        string? dynamicPath = null)
-    {
-        var directoryName = fullPath[..fullPath.LastIndexOf(Path.DirectorySeparatorChar)]
-            .Replace(rootPath, "")
-            .ToLowerInvariant();
-        if (!directoryName.StartsWith(Path.DirectorySeparatorChar))
-        {
-            directoryName = Path.DirectorySeparatorChar + directoryName;
-        }
-        if (!directoryName.EndsWith(Path.DirectorySeparatorChar))
-        {
-            directoryName += Path.DirectorySeparatorChar;
-        }
-
-        if (isCollection && directoryName.Length > 1)
-        {
-            // Needed check in case the content files are in subdirectories
-            var index = directoryName.IndexOf(Path.DirectorySeparatorChar, 1) + 1;
-            if (index < directoryName.Length)
-            {
-                directoryName = directoryName[..index];
-            }
-        }
-
-        var fileName = string.IsNullOrWhiteSpace(dynamicPath)
-            ? Path.GetFileNameWithoutExtension(fullPath).ToLowerInvariant()
-            : dynamicPath;
-        fileName = SlugUtils.Convert(fileName);
-
-        return Constants.Page.IsReserved(fileName)
-            ? new FileInfo(directoryName, fileName)
-            : new FileInfo(
-                directoryName + fileName + Path.DirectorySeparatorChar,
-                Constants.Page.Index.ToLowerInvariant());
     }
 }

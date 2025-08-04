@@ -14,29 +14,25 @@ namespace RazorStatic.Hosting;
 
 internal sealed class RazorStaticHostedService : IHostedService
 {
-    private readonly string                            _404FilePath;
-    private readonly string                            _500FilePath;
-    private readonly CancellationTokenSource           _cts;
-    private readonly ILogger<RazorStaticHostedService> _logger;
-    private readonly RazorStaticConfigurationOptions   _options;
-    private readonly HttpListener                      _server;
+    private readonly string                                    _404FilePath;
+    private readonly string                                    _500FilePath;
+    private readonly CancellationTokenSource                   _cts;
+    private readonly ILogger<RazorStaticHostedService>         _logger;
+    private readonly IOptions<RazorStaticConfigurationOptions> _options;
+    private readonly HttpListener                              _server;
 
     private readonly SemaphoreSlim _semaphore;
-    private readonly string        _sourcePath;
 
     public RazorStaticHostedService(
         ILogger<RazorStaticHostedService> logger,
         IOptions<RazorStaticConfigurationOptions> options)
     {
-        _logger             = logger;
-        _options            = options.Value;
-        _options.OutputPath = _options.OutputPath.Trim(Path.DirectorySeparatorChar);
+        _logger  = logger;
+        _options = options;
 
-        _sourcePath = _options.IsAbsoluteOutputPath
-            ? _options.OutputPath
-            : @$"{Environment.CurrentDirectory}\{_options.OutputPath}";
-        _404FilePath = _sourcePath + Path.DirectorySeparatorChar + Constants.Page.Error404 + ".html";
-        _500FilePath = _sourcePath + Path.DirectorySeparatorChar + Constants.Page.Error500 + ".html";
+        var outputPath = _options.Value.ActualOutputPath.Trim(Path.DirectorySeparatorChar);
+        _404FilePath = outputPath + Path.DirectorySeparatorChar + Constants.Page.Error404 + ".html";
+        _500FilePath = outputPath + Path.DirectorySeparatorChar + Constants.Page.Error500 + ".html";
 
         _semaphore = new SemaphoreSlim(1, 1);
 
@@ -46,16 +42,16 @@ internal sealed class RazorStaticHostedService : IHostedService
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        if (!_options.ShouldServe)
+        if (!_options.Value.ShouldServe)
         {
             return Task.CompletedTask;
         }
 
-        var uri = $"http://localhost:{_options.Port}/";
+        var uri = $"http://localhost:{_options.Value.Port}/";
         _server.Prefixes.Add(uri);
         _server.Start();
 
-        _logger.LogInformation("Serving files from '{Path}' at: '{Uri}'.", _sourcePath, uri);
+        _logger.LogInformation("Serving files from '{Path}' at: '{Uri}'.", _options.Value.ActualOutputPath, uri);
 
         _ = Task.Run(
             async () =>
@@ -106,7 +102,7 @@ internal sealed class RazorStaticHostedService : IHostedService
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (_options.ShouldServe)
+        if (_options.Value.ShouldServe)
         {
             _logger.LogInformation("Stopping server...");
 
@@ -141,7 +137,7 @@ internal sealed class RazorStaticHostedService : IHostedService
         try
         {
             var requestUrl = context.Request.Url!.AbsolutePath.Trim('/');
-            var filePath   = Path.Combine(_sourcePath, requestUrl);
+            var filePath   = Path.Combine(_options.Value.ActualOutputPath, requestUrl);
 
             if (string.IsNullOrEmpty(requestUrl) || Directory.Exists(filePath))
             {

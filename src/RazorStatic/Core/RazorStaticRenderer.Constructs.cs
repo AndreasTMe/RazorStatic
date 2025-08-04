@@ -1,36 +1,22 @@
-﻿using System.Collections.Generic;
+﻿using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace RazorStatic.Core;
 
 internal sealed partial class RazorStaticRenderer
 {
-    private readonly record struct FileInfo(string Directory, string Name);
-
-    private readonly record struct NodePath(string Path, int Depth);
-
-    private sealed class Node
+    private sealed class RazorRoute
     {
-        private readonly List<Leaf> _leaves = [];
-        private readonly List<Node> _nodes  = [];
+        public string FullPath  { get; }
+        public int    Depth     { get; }
+        public bool   IsDynamic { get; }
 
-        public IReadOnlyList<Leaf> Leaves => _leaves;
-        public IReadOnlyList<Node> Nodes  => _nodes;
-
-        public void AddNode(Node node) => _nodes.Add(node);
-
-        public void AddLeaf(Leaf leaf) => _leaves.Add(leaf);
-    }
-
-    private sealed class Leaf
-    {
-        public string FullPath      { get; }
-        public bool   IsDynamicPath { get; }
-
-        public Leaf(string fullPath)
+        public RazorRoute(string fullPath)
         {
-            FullPath      = fullPath;
-            IsDynamicPath = RegexHelpers.IsDynamicPathRegex().Match(fullPath).Success;
+            FullPath  = fullPath;
+            Depth     = fullPath.Count(static p => p == Path.DirectorySeparatorChar);
+            IsDynamic = RegexHelpers.IsDynamicPathRegex().Match(fullPath).Success;
         }
     }
 
